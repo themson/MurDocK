@@ -83,7 +83,7 @@ Known Bugs:
 	Time out on none returning subprocess communicate calls 
 		-being addressed with timer
 	
-	Execesive overhead in creation of initializaion buffer object 
+	Excessive overhead in creation of initializaion buffer object 
 		-to be addressed
  
  
