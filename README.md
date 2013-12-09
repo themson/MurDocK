@@ -3,7 +3,7 @@ MurDocK
 
 Mutable Universal Relay Document Kit
 
-MurDock is an extension of the "agent smith" shell framework
+MurDock is an extension of the "falo" framework
 
 
 Overview:
@@ -18,10 +18,8 @@ Overview:
 
  
 Supported Services:
-
-  1. Adpative to any common collaborative web platform.
-
-	2. The base toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for                communication 	over the Google Spreadsheets service.
+1. Adpative to any common collaborative web platform.
+2. The base toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for                communication 	over the Google Spreadsheets service.
 	
 	      Note: This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is 
 	      simply a demonstration of the application of this framework. The spreadsheet services was chosen due
@@ -69,10 +67,10 @@ Usage:
  
  
 Known Bugs:
-    Time out on none returning subprocess communicate calls 
-      -being addressed with timer
     
-    Execesive overhead in creation of initializaion buffer object
+Time out on none returning subprocess communicate calls 
+      -being addressed with timer
+Execesive overhead in creation of initializaion buffer object
       -to be addressed
  
  
