@@ -9,7 +9,7 @@ from random import randint
 # Google Docs Account Credentials
 GD_ACCT = '<user>@gmail.com' 
 GD_PASS = '<Password>'
-GD_DOC_NAME = "<spreadsheetname>"
+GD_DOC_NAME = '<spreadsheetname>'
 GD_SHEET_NAME = '<sheet/pagename>'
 
 
