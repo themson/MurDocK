@@ -1,20 +1,20 @@
 MurDocK
 =======
 
-Mutable. Universal. Relay. Document. Kit.
-
-:: MurDock is an extension of the "falo" framework ::
+Mutable. Universal. Relay. Document. Kit.  
+*_:: MurDock is an extension of the "falo" framework ::_*
  
-~ MurDock v1.0 beta ~
-Author:   Themson Mester
-Version:  1.0 beta
-Release:  Public
-License:  MIT
-EULA:  Be Excellent to each other
-Help:  !help
- 	
+ 
+~ MurDock v1.0 beta ~  
+Author:   Themson Mester  
+Version:  1.0 beta  
+Release:  Public  
+License:  MIT  
+EULA:  Be Excellent to each other  
+Help:  !help  
 
-## Overview:
+
+# Overview:
 
 The purpose of this tool is to provide a protocol independent C&C tool that contains a base set of features and
 can piggyback on top of any collaborative web platform or service. The base docClient and docServer are meant to
@@ -25,47 +25,55 @@ The framework can be extended to operate over lower level protocols if desired.
 	
 
  
-## Supported Services:
+# Supported Services:
 
-Adpative to any common collaborative web platform via creation of "buffer" class.
-
-Thebase toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for        
-communication over the Google Spreadsheets service. 
-This class is a wrapper of the [gspread](https://github.com/burnash/gspread) library by [Anton Burnashev](https://github.com/burnash).
+**Adpative to any common collaborative web platform via creation of _"buffer"_ class.**  
+  
+   
+   
+     
+       
+       
+       
+The base toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for        
+communication over the Google Spreadsheets service. This _docBuffer_ class is a wrapper of the [gspread](https://github.com/burnash/gspread) library by, [Anton Burnashev](https://github.com/burnash).
 
 	
-Note: This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
+__Note:__ _This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
 simply a demonstration of the application of this framework. The spreadsheet services was chosen due
 to the fact that it is one with which a great number of enterprise users are familiar. This tools does
 not in any way seek to disrupt services or perform any action with the intent of introducing to Google products
 and services any viruses, worms, defects, Trojan horses, malware or any items of a destructive nature. The 
 services is solely utilized to store, manipulate and transport data, as intend. This tool is as a proof of
 concept, and may only be used between systems on which all controlling parties have agreed to the transport
-and manipulation of data. Users are not authorized to leverage this framework in any mean that may fall outside
-of the bounds of locally applicable law.
+and manipulation of data. Users are not authorized to leverage this framework in any means that may fall outside
+of the bounds of locally applicable law._
 
 
  
-## Installation:
-### Requirements
-python 2.7.*
-gspread library by Anton Burnashevfor docBuffer usage [gspread](https://github.com/burnash/gspread)
+# Installation:
+### Framework Requirements
+- python 2.7.*
+- Pycrypto > 2.5
 
- 
-## Usage:
- 
+### "Buffer" Class Requirements
+- docBuffer
+	- [gspread](https://github.com/burnash/gspread)
+
+_Run as python script or create PE|ELF|DMG using the following_
+- [cx_Freeze](http://cx-freeze.sourceforge.net/index.html)
+- [pyinstaller](http://www.pyinstaller.org/)
+- [py2exe](http://www.py2exe.org/)
+  
+
+
+# Usage:
+
 ### Components
-dockSERVER runs on remote host
-dockCLIENT runs on local host
-
-Atleast on "BUFFER" class
-
-Can be run as a script or a PE ELF DMG using the following
-[cx_Freeze](http://cx-freeze.sourceforge.net/index.html)
-[pyinstaller](http://www.pyinstaller.org/)
-[py2exe](http://www.py2exe.org/)
-
-         	
+1. dockSERVER - run on remote host
+2. dockCLIENT - run on local host    
+3. Atleast one _"Buffer"_ class (on each hosts)
+ 
 ### Help Menu -
            ~ Murdock 1.0 Public ~
            *** commands ***
@@ -92,11 +100,11 @@ Can be run as a script or a PE ELF DMG using the following
  
 ## Known Bugs:
     
-    Time out on none returning subprocess communicate calls 
-        -being addressed with timer
-	
-    Excessive overhead in creation of initializaion buffer object 
-        -to be addressed
+- Time out on none returning subprocess communicate calls
+	- being addressed with timer  
+
+- Excessive overhead in creation of initializaion buffer object
+	- to be addressed
  
  
 ## Road Map:
