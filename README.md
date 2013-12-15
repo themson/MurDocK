@@ -32,7 +32,7 @@ into the MurDock tool in order to create a unique shell infrastructure that will
 The base toolkit comes with a set of classes that allow for communication over the Google Spreadsheets service. This _Buffer_ class is a wrapper of the [gspread](https://github.com/burnash/gspread) library by, [Anton Burnashev](https://github.com/burnash).
 
 	
-__Note:__ _This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
+__Notice:__ _This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
 simply a demonstration of the application of this framework. The spreadsheet services was chosen due
 to the fact that it is one with which a great number of enterprise users are familiar. This tools does
 not in any way seek to disrupt services or perform any action with the intent of introducing to Google products
