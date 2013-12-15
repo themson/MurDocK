@@ -6,10 +6,10 @@ Mutable. Universal. Relay. Document. Kit.
  
  
 ~ MurDock v1.0 beta ~  
-Author:   Themson Mester  
+Author:   [Themson Mester](https://twitter.com/ThemsonMester)  
 Version:  1.0 beta  
 Release:  Public  
-License:  MIT  
+License:  [MIT](https://github.com/themson/MurDocK/blob/master/LICENSE)  
 EULA:  Be Excellent to each other  
 Help:  !help  
 
