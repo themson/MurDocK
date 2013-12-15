@@ -34,7 +34,7 @@ into the MurDock tool in order to create a unique shell infrastructure that will
        
        
 The base toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for        
-communication over the Google Spreadsheets service. This _docBuffer_ class is a wrapper of the [gspread](https://github.com/burnash/gspread) library by, [Anton Burnashev](https://github.com/burnash).
+communication over the Google Spreadsheets service. This _Buffer_ class is a wrapper of the [gspread](https://github.com/burnash/gspread) library by, [Anton Burnashev](https://github.com/burnash).
 
 	
 __Note:__ _This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
@@ -52,7 +52,7 @@ of the bounds of locally applicable law._
 # Installation:
 ### Framework Requirements
 - python 2.7.*
-- Pycrypto > 2.5
+- ~~Pycrypto > 2.5~~ (Not needed for current public release)
 
 ### "Buffer" Class Requirements
 - docBuffer
@@ -70,7 +70,7 @@ _Run as python script or create PE|ELF|DMG using the following_
 ### Components
 1. dockSERVER - run on remote host
 2. dockCLIENT - run on local host    
-3. Atleast one _"Buffer"_ class (on each hosts)
+3. Atleast one _"Buffer"_ class (on each host)
  
 ### Help Menu -
            ~ Murdock 1.0 Public ~
@@ -98,10 +98,10 @@ _Run as python script or create PE|ELF|DMG using the following_
  
 ## Known Bugs:
     
-- Time out on none returning subprocess communicate calls
+- Time out on non-returning subprocess communicate calls
 	- being addressed with timer  
 
-- Excessive overhead in creation of initializaion buffer object
+- Excessive overhead in initializaion of buffer for docBuffer
 	- to be addressed
  
  
