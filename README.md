@@ -31,7 +31,9 @@ Supported Services:
 	
 	
 	The base toolkit comes with a set of classes (buffer parent, inherited client and server) that allow for        
-	communication over the Google Spreadsheets service.
+	communication over the Google Spreadsheets service. 
+	This class is a wrapper of the gspread library by Anton Burnashev.
+	[gspread](https://github.com/burnash/gspread)
 	
 	Note: This is in no way a vulnerability, exploit or misconfiguration in any Google services or systems, it is
 	simply a demonstration of the application of this framework. The spreadsheet services was chosen due
