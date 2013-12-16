@@ -146,7 +146,7 @@ def winExecCmd(commandsIn):
         output = process.communicate()
         if output[1] == '':
             return output[0]
-        if output[0] and output[1]: #TODO: THIS SHOULD BE AN ELIF
+        elif output[0] and output[1]:
             return output[0] + output[1]
         else:
             return output[1]
@@ -163,7 +163,7 @@ def nixExecCmd(commandsIn):
         output = process.communicate()    
         if output[1] == '':
             return output[0]
-        if output[0] and output[1]: #TODO: THIS SHOULD BE AN ELIF
+        elif output[0] and output[1]:
             return output[0] + output[1]
         else:
             return output[1]    
@@ -178,7 +178,7 @@ def osxExecCmd(commandsIn):
         output = process.communicate()    
         if output[1] == '':
             return output[0]
-        if output[0] and output[1]: #TODO: THIS SHOULD BE AN ELIF
+        elif output[0] and output[1]:
             return output[0] + output[1]
         else:
             return output[1]    
