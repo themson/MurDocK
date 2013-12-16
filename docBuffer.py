@@ -155,7 +155,7 @@ class docParentBuffer:
     #Get data by cellCord as str  
     def getCellData(self, cellCord):
         try:
-	    #data = crypt(data, encrypt) encrypt data before posting
+	    #data = crypt(data, dencrypt) encrypt data before posting
             cellData = self.bufferSheet.acell(cellCord).value
             return cellData
         except:
