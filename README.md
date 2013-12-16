@@ -97,4 +97,23 @@ _Run as python script or create PE|ELF|DMG using the following_
  
  
 ## Road Map:
+1. Add crypto to parent framework
+   * Looking at moving from AES-CBC to AES-CTR
+   * Allow of mutable key words in protocol
+   * Will apply crypto to all future modules
+  
+
+2. Prepend binary protocol flag header
+   * Required for collision prevention 
+   * Allows for instream RE-KEY on AES-CTR counter exhaustion
+  
+
+3. Provide outline for _Buffer_ class creation
+   * Promote contribution to project
+  
+
+4. Create more plugin classes
+   * Demonstrate elasticity of method
+   * Allow for protocol discovery and cycling
+
 
