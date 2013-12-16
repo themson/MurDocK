@@ -93,11 +93,7 @@ _Run as python script or create PE|ELF|DMG using the following_
  
 ## Known Bugs:
     
-- Time out on non-returning subprocess communicate calls
-	- being addressed with timer  
-
-- Excessive overhead in initializaion of buffer for docBuffer
-	- to be addressed
+[See Github Issues Tracker:](https://github.com/themson/MurDocK/issues) _https://github.com/themson/MurDocK/issues_
  
  
 ## Road Map:
