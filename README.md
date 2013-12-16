@@ -16,10 +16,10 @@ Help:  !help
 
 # Overview:
 
-The purpose of this tool is to provide a protocol independent tool that contains a base set of features that
+The purpose of this tool is to provide a protocol independent framework that contains a base set of features that
 can piggyback on top of any collaborative web platform or service. The base docClient and docServer are meant to
 be extended upon with _Buffer_ classes written for individual web services. These buffer classes can be plugged
-into the MurDock tool in order to create a unique shell infrastructure that will always contains a base set of features, as well as the ability to tunnel over any web application traffic for which a buffer class has been constructed. The framework can be extended to operate over lower level protocols if desired.
+into the MurDock framework in order to create a unique shell infrastructure that will always contains a base set of features, as well as the ability to tunnel over any web application traffic for which a buffer class has been constructed. The framework can be extended to operate over lower level protocols if desired.
 	
 
  
