@@ -99,7 +99,7 @@ _Run as python script or create PE|ELF|DMG using the following_
 ## Road Map:
 1. Add crypto to parent framework
    * Looking at moving from AES-CBC to AES-CTR
-   * Allow of mutable key words in protocol
+   * Allow for mutable key words in protocol
    * Will apply crypto to all future modules
   
 
