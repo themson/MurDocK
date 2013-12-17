@@ -68,26 +68,27 @@ _Run as python script or create PE|ELF|DMG using the following_
 3. Atleast one _"Buffer"_ class (on each host)
  
 ### Help Menu -
-           ~ Murdock 1.0 Public ~
-           *** commands ***
-          !help     - Print this menu
-          !clear    - Clear local terminal              
-          !cmd      - Execute local command - Usage : !cmd <command string>
-          !sysinfo  - Print System info for remote host
-          
-          !upload   - Usage : !upload <local_file_path> remote_file_path>
-          !download - Usage : !download <remote_file_path> <local_file_path>
-          
-          !egress   - Find egress ports out of remote network - Interactive
-          !meterup  - Upgrade to meterpreter shell - Interactive
-          !forward  - Forward local socket to remote socket - Interactive (disabled)
-          
-          !sync     - Synchronize buffers with remote server  
-          !shutdown - Shutdown remote docServer. Does not remove binary (SLOPPY)
-          !cleanup  - Shutdown remote docServer and remove binary (BEST)
-          !exit     - Exit Local docClient   
-          
-          <:        - Send command to remote server
+      ~ MurDock v1.0 Public ~
+      *** commands ***
+      !help     - Print this help menu : (!h)
+      !clear    - Clear local terminal : (!c)
+      !watch    - Looped listener for incoming shells              
+      !cmd      - Execute local command - Usage : !cmd <command string>
+      !sysinfo  - Print System info of remote host
+              
+      !upload   - Usage : !upload <local_file_path> <remote_file_path>
+      !download - Usage : !download <remote_file_path> <local_file_path>
+                  
+      !egress   - Find egress ports out of remote network - Interactive
+      !meterup  - Upgrade to meterpreter shell - Interactive
+      !forward  - Forward local socket to remote socket - (disabled)
+        
+      !sync     - Synchronize buffers with remote server  
+      !shutdown - Shutdown remote docServer. Does not remove binary
+      !cleanup  - Shutdown remote docServer and remove binary
+      !exit     - Exit Local client only
+        
+      <:        - Send command to remote server
  
  
  
