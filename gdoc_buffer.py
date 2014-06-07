@@ -7,11 +7,10 @@ from random import randint
 
 
 # Google Docs Account Credentials
-GD_ACCT = '<user>@gmail.com' 
+GD_ACCT = '<user>@gmail.com'
 GD_PASS = '<Password>'
 GD_DOC_NAME = '<spreadsheetname>'
 GD_SHEET_NAME = '<sheet/pagename>'
-
 
 #Debug Logger Handle
 # Debug Logging Object and Handle
@@ -36,7 +35,7 @@ docLogger.addHandler(ch)
 
 ### PARENT docBUFFER CLASS ### 
 # Base for client and server classes
-class docParentBuffer:
+class gdocParentBuffer:
     def __init__(self):
         ## CONSTANTS ##
         self.SERVER_WRITE_COL = 'd'
@@ -69,7 +68,7 @@ class docParentBuffer:
         
         #Gdocs SpeadSheet Object
         #Instantiate && return bufferSheet object
-        self.bufferSheet = self.initGS(self.GD_SHEET_NAME)
+        self.bufferSheet = self.init_gs(self.GD_SHEET_NAME)
         
     
     def __del__(self):
@@ -77,39 +76,39 @@ class docParentBuffer:
         pass    
        
     #Create and return Gspread Buffer object
-    def initGS(self, GD_SHEET_NAME):    #TODO: check why are we passing sheet name and not self. reference?
+    def init_gs(self, GD_SHEET_NAME):    #TODO: check why are we passing sheet name and not self. reference?
         """ Sets which WorkSheet to use within a Document
             this feature can be used for sessions or threads """
         #auth to google
         try:
             gc = gspread.login(self.GD_ACCT, self.GD_PASS)
-            docLogger.debug('initGS(): Success Authenticating to Google Acc')        
+            docLogger.debug('init_gs(): Success Authenticating to Google Acc')        
         except gspread.AuthenticationError:
-            raise Exception('initGS(): could not auth, check creds')
+            raise Exception('init_gs(): could not auth, check creds')
         #open buffer && return handle to object
         try:
             baseDOC = gc.open(self.GD_DOC_NAME) #original
             bufferSheet = baseDOC.worksheet(GD_SHEET_NAME) #added
             return bufferSheet         
         except:
-            raise Exception('initGS(): could not open "%s", check sheet name' % GD_SHEET_NAME)
+            raise Exception('init_gs(): could not open "%s", check sheet name' % GD_SHEET_NAME)
         
     ### BUFFER INIT ###
     # Null out either chosen buffer
-    def bufferInit(self, whichBuffer, BufferData = "<NULL>"):
+    def buffer_init(self, whichBuffer, BufferData = "<NULL>"):
         """ Valid whichBuffer "client" or "server"
         Valid BufferData "<NULL>" or "!sync" """
         self.lastReadCell = self.BUFFER_RANGE_MIN
         self.lastWriteCell = self.BUFFER_RANGE_MAX       
         if whichBuffer.lower() == "server":
             #Set ClientWriteIndex to beginning of buffer
-            self.setCell(self.CLIENT_WRITE_INDEX_CORD, self.BUFFER_RANGE_MIN)
+            self.set_cell(self.CLIENT_WRITE_INDEX_CORD, self.BUFFER_RANGE_MIN)
             #Set to SERVER Buffer Range
             cellMinCord = self.SERVER_WRITE_COL + str(self.BUFFER_RANGE_MIN)
             cellMaxCord = self.SERVER_WRITE_COL + str(self.BUFFER_RANGE_MAX)
         elif whichBuffer.lower() == "client":
             #Set ServerWriteIndex to beginning of buffer
-            self.setCell(self.SERVER_WRITE_INDEX_CORD, self.BUFFER_RANGE_MIN)
+            self.set_cell(self.SERVER_WRITE_INDEX_CORD, self.BUFFER_RANGE_MIN)
             #Set to CLIENT Buffer Range
             cellMinCord = self.CLIENT_WRITE_COL + str(self.BUFFER_RANGE_MIN)
             cellMaxCord = self.CLIENT_WRITE_COL + str(self.BUFFER_RANGE_MAX)
@@ -126,7 +125,7 @@ class docParentBuffer:
     
     # TODO: STILL UNWRITTEN, may not be needed
     # Reauth after a timeout
-    def checkAuth(self):
+    def check_auth(self):
         #could just use a timer inside client instead
         #used if someone leave client open for too long
         #Should call init an create a new buffersheet object
@@ -135,17 +134,17 @@ class docParentBuffer:
                 
     ### INDEX UPDATERS ###
     #update lastReadCell var
-    def lastReadUpdate(self, readCell):
+    def last_read_update(self, readCell):
         self.lastReadCell = readCell
           
     #lastWriteCell Updater
     #update lastWriteCell var
-    def writeUpdate(self, writtenTo):
+    def write_update(self, writtenTo):
         self.lastWriteCell = writtenTo
         
     ### Cell GETTERS and SETTERS ###
     #Set cell based by cellCord
-    def setCell(self, cellCord, data):
+    def set_cell(self, cellCord, data):
         try:
             #data = crypt(data, encrypt) encrypt data before posting
             self.bufferSheet.update_acell(cellCord, data)              
@@ -153,7 +152,7 @@ class docParentBuffer:
             return 'ERROR: write failed'
     
     #Get data by cellCord as str  
-    def getCellData(self, cellCord):
+    def get_cell_data(self, cellCord):
         try:
             cellData = self.bufferSheet.acell(cellCord).value
             return cellData
@@ -161,7 +160,7 @@ class docParentBuffer:
             return 'ERROR: read failed'
     
     #Return cell toWrite next
-    def getToWrite(self):
+    def get_to_write(self):
         if self.lastWriteCell == self.BUFFER_RANGE_MAX:
             return self.BUFFER_RANGE_MIN
         else:
@@ -185,7 +184,7 @@ class docParentBuffer:
             docLogger.debug('Invalid call to crypt() ' + "Text: " + textBlock + "  Direction: " + direction)
                    
     #Negotiate AES Key For Session        
-    def genKey(self, cipherText, direction):
+    def gen_key(self, cipherText, direction):
         #crypto ignored on !sync string should never be crypted
         #sync reset to base keys
         #request <rekey>
@@ -200,21 +199,21 @@ class docParentBuffer:
 
 
 ### DOC CLIENT CLASS ###
-class docClientBuffer(docParentBuffer):
+class gdocClientBuffer(gdocParentBuffer):
     ### INDEX TRACKERS ###
     #update value of ClientWriteIndex 
     #I.E. set last cell into which client wrote data
-    def setWriteIndex(self, cellWritten):
-        self.setCell(self.CLIENT_WRITE_INDEX_CORD, cellWritten)
+    def set_write_index(self, cellWritten):
+        self.set_cell(self.CLIENT_WRITE_INDEX_CORD, cellWritten)
           
     #return value of ServerWriteIndex
     #I.E. get last cell into which Server wrote data
     def getServerIndex(self):
-        serverIndex = int(self.getCellData(self.SERVER_WRITE_INDEX_CORD))
+        serverIndex = int(self.get_cell_data(self.SERVER_WRITE_INDEX_CORD))
         return serverIndex
     
     #Return cell toRead next
-    def getToRead(self):
+    def get_to_read(self):
         serverWriteIndex = self.getServerIndex()
         if serverWriteIndex == self.lastReadCell:
             return self.lastReadCell    
@@ -226,30 +225,30 @@ class docClientBuffer(docParentBuffer):
     
     ### PRIMARY READ AND SEND METHODS ###
     #post data to client buffer
-    def sendData(self, data):
-        toWrite = self.getToWrite()
+    def send_data(self, data):
+        toWrite = self.get_to_write()
         writeCellCord = self.CLIENT_WRITE_COL + str(toWrite)
-        self.setCell(writeCellCord, data)
-        self.writeUpdate(toWrite)
-        self.setWriteIndex(toWrite)
+        self.set_cell(writeCellCord, data)
+        self.write_update(toWrite)
+        self.set_write_index(toWrite)
 
     # Read remote output from sever buffer
-    def readData(self):
+    def read_data(self):
         """ Use as primary Read Data Function
             retries relative to buffer length  """
         queryTries = 1 
         serverData = "<NULL>"     
         while (serverData == "<NULL>") or (serverData == "<READ>"):
-            toRead = self.getToRead()
+            toRead = self.get_to_read()
             readCellCord = self.CLIENT_READ_COL + str(toRead)
-            serverData = self.getCellData(readCellCord)
+            serverData = self.get_cell_data(readCellCord)
             if type(serverData) != str:
-                self.setCell(readCellCord, "<READ>")
-                self.lastReadUpdate(toRead)
+                self.set_cell(readCellCord, "<READ>")
+                self.last_read_update(toRead)
                 return "non-string type returned."
             elif ((serverData != "<NULL>") and (serverData != "<READ>")):
-                self.setCell(readCellCord, "<READ>")
-                self.lastReadUpdate(toRead)
+                self.set_cell(readCellCord, "<READ>")
+                self.last_read_update(toRead)
                 return serverData
             else:
                 print ". ",
@@ -262,12 +261,12 @@ class docClientBuffer(docParentBuffer):
     # Read data with no sleep or repeat
     # Used with port forward methods
     def readData_Unsafe(self):
-        toRead = self.getToRead()
+        toRead = self.get_to_read()
         readCellCord = self.CLIENT_READ_COL + str(toRead)
-        serverData = self.getCellData(readCellCord)
+        serverData = self.get_cell_data(readCellCord)
         if ( (serverData != "<NULL>") and (serverData != "<READ>") ):
-            self.setCell(readCellCord, "<READ>")
-            self.lastReadUpdate(toRead)
+            self.set_cell(readCellCord, "<READ>")
+            self.last_read_update(toRead)
             return serverData
         else:
             return ''
@@ -275,11 +274,11 @@ class docClientBuffer(docParentBuffer):
     #synchronize buffers, initiate connection
     #can be used to resync a session 
     # returns Bool
-    def syncUp(self):
+    def sync_up(self):
         try:
-            self.bufferInit("server")
-            self.bufferInit("client", "!sync")
-            serverData = self.readData()
+            self.buffer_init("server")
+            self.buffer_init("client", "!sync")
+            serverData = self.read_data()
             if serverData == "<SYNCEDUP>":
                 return True
             else:
@@ -288,22 +287,22 @@ class docClientBuffer(docParentBuffer):
             return False
             
 ###  DOC SERVER CLASS ###
-class docServerBuffer(docParentBuffer):
+class gdocServerBuffer(gdocParentBuffer):
     ### INDEX TRACKERS ### 
     #update value of ServerWriteIndex 
     #I.E. set last cell into which client wrote data
-    def setWriteIndex(self, cellWritten):
-        self.setCell(self.SERVER_WRITE_INDEX_CORD, cellWritten)
+    def set_write_index(self, cellWritten):
+        self.set_cell(self.SERVER_WRITE_INDEX_CORD, cellWritten)
           
     #return value of ClientWriteIndex
     #I.E. get last cell into which Server wrote data
-    def getClientIndex(self):
-        clientIndex = int(self.getCellData(self.CLIENT_WRITE_INDEX_CORD))
+    def get_client_index(self):
+        clientIndex = int(self.get_cell_data(self.CLIENT_WRITE_INDEX_CORD))
         return clientIndex
   
     #Return cell toRead next
-    def getToRead(self):
-        clientWriteIndex = self.getClientIndex()
+    def get_to_read(self):
+        clientWriteIndex = self.get_client_index()
         if clientWriteIndex == self.lastReadCell:
             return self.lastReadCell    
         elif clientWriteIndex != self.lastReadCell:
@@ -314,26 +313,26 @@ class docServerBuffer(docParentBuffer):
     
     ### PRIMARY READ AND SEND METHODS ###    
     #post data to client buffer
-    def sendData(self, data):
-        toWrite = self.getToWrite()
+    def send_data(self, data):
+        toWrite = self.get_to_write()
         writeCellCord = self.SERVER_WRITE_COL + str(toWrite)
-        self.setCell(writeCellCord, data)
-        self.writeUpdate(toWrite)
-        self.setWriteIndex(toWrite)
+        self.set_cell(writeCellCord, data)
+        self.write_update(toWrite)
+        self.set_write_index(toWrite)
                 
     # Read remote output from sever buffer
-    def readData(self):
+    def read_data(self):
         """ Use as primary Read Data Function
             retries relative to buffer length  """
         queryTries = 1     
         clientData = "<NULL>"         
         while (clientData == "<NULL>") or (clientData == "<READ>"):
-            toRead = self.getToRead()        
+            toRead = self.get_to_read()        
             readCellCord = self.SERVER_READ_COL + str(toRead)
-            clientData = self.getCellData(readCellCord)
+            clientData = self.get_cell_data(readCellCord)
             if (clientData != "<NULL>") and (clientData != "<READ>"):
-                self.setCell(readCellCord, "<READ>")
-                self.lastReadUpdate(toRead)
+                self.set_cell(readCellCord, "<READ>")
+                self.last_read_update(toRead)
                 return clientData
             else:
                 queryTries = queryTries + 1
@@ -342,6 +341,6 @@ class docServerBuffer(docParentBuffer):
                 sleep(.5)                                               
                      
     #Reinitialize Buffer on !sync command
-    def syncUp(self): 
-        self.bufferInit("client")
+    def sync_up(self): 
+        self.buffer_init("client")
         return "<SYNCEDUP>"
