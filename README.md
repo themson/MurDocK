@@ -5,9 +5,9 @@ Mutable. Universal. Relay. Document. Kit.
 *_:: MurDock is an extension of the "falo" framework ::_*
  
  
-~ MurDock v1.0 beta ~  
+~ MurDock v1.1 beta ~  
 Author:   [Themson Mester](https://twitter.com/ThemsonMester)  
-Version:  1.0 beta  
+Version:  1.1 beta  
 Release:  Public  
 License:  [MIT](https://github.com/themson/MurDocK/blob/master/LICENSE)  
 EULA:  Be Excellent to each other  
@@ -63,8 +63,8 @@ _Run as python script or create PE|ELF|DMG using the following_
 # Usage:
 
 ### Components
-1. dockSERVER - run on remote host
-2. dockCLIENT - run on local host    
+1. server - run on remote host
+2. client - run on local host    
 3. Atleast one _"Buffer"_ class (on each host)
  
 ### Help Menu -
