@@ -65,7 +65,7 @@ _Run as python script or create PE|ELF|DMG using the following_
 ### Components
 1. server - run on remote host
 2. client - run on local host    
-3. Atleast one _"Buffer"_ class (on each host)
+3. At least one _"Buffer"_ class (on each host)
  
 ### Help Menu -
       ~ MurDock v1.0 Public ~
