@@ -50,7 +50,7 @@ of the bounds of locally applicable law._
 - ~~Pycrypto > 2.5~~ (Not needed for current public release)
 
 ### "Buffer" Class Requirements
-- docBuffer
+-  gdoc_buffer
 	- [gspread](https://github.com/burnash/gspread)
 
 _Run as python script or create PE|ELF|DMG using the following_
@@ -96,7 +96,12 @@ _Run as python script or create PE|ELF|DMG using the following_
     
 [See Github Issues Tracker:](https://github.com/themson/MurDocK/issues) _https://github.com/themson/MurDocK/issues_
  
- 
+
+## Change Log:
+
+[Change Log](https://github.com/themson/MurDocK/blob/syntax/changelog.txt) _https://github.com/themson/MurDocK/blob/syntax/changelog.txt_
+
+
 ## Road Map:
 1. Add crypto to parent framework
    * Looking at moving from AES-CBC to AES-CTR
