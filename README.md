@@ -5,10 +5,10 @@ Mutable. Universal. Relay. Document. Kit.
 *_:: MurDock is an extension of the "falo" framework ::_*
  
  
-v2.0 - Currently Under developement
-	Full re-architecture
-	New Protocols
-	New features...
+**v2.0 - Currently Under developement**
+- Full re-architecture
+- New Protocols
+- New features
  
 ~ MurDock v1.0 beta ~  
 Author:   [Themson Mester](https://twitter.com/ThemsonMester)  
